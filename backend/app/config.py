@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     demo_sample_fps: float = 6.0
     demo_analysis_width: int = 640
 
+    # Highlight clip window around a detected shot/goal: seconds of build-up
+    # before the moment and aftermath after it.
+    clip_pre_seconds: float = 8.0
+    clip_post_seconds: float = 4.0
+    clip_post_seconds_goal: float = 6.0
+
     # Player-based attack detection (YOLO)
     player_analysis_fps: float = 2.5
     player_detect_imgsz: int = 1280

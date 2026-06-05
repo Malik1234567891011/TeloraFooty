@@ -11,15 +11,17 @@ from tests.conftest import requires_ffmpeg
 
 
 def test_clip_window_for_shot():
+    # ~8s of build-up before, ~4s of aftermath after.
     w = clip_window_for_event("shot", 20.0, 100.0)
-    assert w.start_seconds == 14.0
-    assert w.end_seconds == 28.0
+    assert w.start_seconds == 12.0
+    assert w.end_seconds == 24.0
 
 
 def test_clip_window_for_goal_is_wider():
+    # Same build-up, a little extra aftermath for the celebration.
     w = clip_window_for_event("goal", 20.0, 100.0)
     assert w.start_seconds == 12.0
-    assert w.end_seconds == 32.0
+    assert w.end_seconds == 26.0
 
 
 def test_clip_window_clamps_start_to_zero():
@@ -28,7 +30,8 @@ def test_clip_window_clamps_start_to_zero():
 
 
 def test_clip_window_clamps_end_to_duration():
-    w = clip_window_for_event("shot", 95.0, 100.0)
+    # 98 + 4s aftermath = 102 > 100, so it must clamp to the video duration.
+    w = clip_window_for_event("shot", 98.0, 100.0)
     assert w.end_seconds == 100.0
 
 

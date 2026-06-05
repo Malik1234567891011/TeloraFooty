@@ -13,6 +13,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.config import settings
 from app.core.errors import ProcessingError, ValidationError
 from app.core.logging import get_logger
 from app.services.video_metadata_service import get_video_metadata
@@ -29,11 +30,16 @@ class ClipWindow:
 def clip_window_for_event(
     event_type: str, timestamp_seconds: float, video_duration: float
 ) -> ClipWindow:
-    """Compute a clip window around an event per docs/Plan.md #8."""
+    """Compute a highlight clip window around a detected shot/goal.
+
+    Defaults: ~8s of build-up before the moment and ~4s of aftermath after it
+    (configurable via CLIP_PRE_SECONDS / CLIP_POST_SECONDS). Goals get a little
+    extra aftermath for the celebration.
+    """
+    pre = settings.clip_pre_seconds
+    post = settings.clip_post_seconds
     if event_type == "goal":
-        pre, post = 8.0, 12.0
-    else:
-        pre, post = 6.0, 8.0
+        post = settings.clip_post_seconds_goal
     start = max(0.0, timestamp_seconds - pre)
     end = timestamp_seconds + post
     if video_duration > 0:
