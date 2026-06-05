@@ -1,0 +1,30 @@
+{
+  "game_id": "game_003",
+  "title": "TeloraFooty Demo Game 3",
+  "team_name": "Our Team",
+  "opponent_name": "Lakeside Athletic",
+  "video_filename": "seed_20260605_7ffe922b.mp4",
+  "events": [
+    {
+      "type": "shot",
+      "team": "our_team",
+      "timestamp_seconds": 7.9,
+      "period": 1,
+      "notes": "Early shot from edge of box"
+    },
+    {
+      "type": "goal",
+      "team": "our_team",
+      "timestamp_seconds": 22.1,
+      "period": 1,
+      "notes": "Goal after a quick break"
+    },
+    {
+      "type": "shot",
+      "team": "our_team",
+      "timestamp_seconds": 35.3,
+      "period": 2,
+      "notes": "Long-range effort saved"
+    }
+  ]
+}
