@@ -3,4 +3,4 @@ uvicorn[standard]
 gdown
 python-multipart
 pytest
-httpx
+httpx2
