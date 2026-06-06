@@ -67,7 +67,6 @@ export default function EventCard({
           </div>
           <div className="chips">
             <span className={`chip${event.type === 'shot' ? ' chip-shot' : ''}`}>{event.source}</span>
-            {event.verified && <span className="chip chip-ok">verified</span>}
           </div>
         </div>
       </div>
