@@ -1,67 +1,62 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks
+from pathlib import Path
 
-from app.core.errors import NotFoundError
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+
 from app.schemas.clip_schema import ClipOut, GameClipsResponse
 from app.schemas.event_schema import EventOut, GameEventsResponse
-from app.schemas.game_schema import GameSummary, ProcessGameResponse
-from app.services import job_service, processing_service
+from app.schemas.frontend_api import game_out
+from app.schemas.game_schema import ProcessGameResponse
+from app.services import job_service, media_service, processing_service
 from app.services.store import store
-from app.services.video_storage_service import public_url_for_upload
 
 router = APIRouter()
 
 
-def _video_url_for_game(game) -> str | None:
-    if game.video_filename:
-        return public_url_for_upload(game.video_filename)
-    return None
+def _require_game(game_id: str):
+    game = store.get_game(game_id)
+    if game is None:
+        raise HTTPException(404, "Game not found")
+    return game
 
 
 @router.get("")
-def list_games() -> dict:
-    games = store.list_games()
-    return {
-        "games": [
-            GameSummary(
-                game_id=g.id,
-                title=g.title,
-                video_url=_video_url_for_game(g),
-                status=g.status,
-                team_name=g.team_name,
-                opponent_name=g.opponent_name,
-                duration_seconds=g.duration_seconds,
-                event_count=g.event_count,
+def list_games() -> list[dict]:
+    out = []
+    for g in sorted(store.list_games(), key=lambda g: g.created_at, reverse=True):
+        events = store.events_for_game(g.id)
+        out.append(
+            game_out(
+                g,
+                goals=sum(1 for e in events if e.event_type == "goal"),
+                shots=sum(1 for e in events if e.event_type == "shot"),
             ).model_dump()
-            for g in games
-        ]
-    }
+        )
+    return out
 
 
-@router.get("/{game_id}", response_model=GameSummary)
-def get_game(game_id: str) -> GameSummary:
-    game = store.get_game(game_id)
-    if game is None:
-        raise NotFoundError(f"Game '{game_id}' not found.", code="GAME_NOT_FOUND")
-    return GameSummary(
-        game_id=game.id,
-        title=game.title,
-        video_url=_video_url_for_game(game),
-        status=game.status,
-        team_name=game.team_name,
-        opponent_name=game.opponent_name,
-        duration_seconds=game.duration_seconds,
-        event_count=game.event_count,
-    )
+@router.get("/{game_id}")
+def get_game(game_id: str) -> dict:
+    return game_out(_require_game(game_id)).model_dump()
+
+
+@router.delete("/{game_id}")
+def delete_game(game_id: str) -> dict:
+    game = _require_game(game_id)
+    video = store.get_video(game.video_id) if game.video_id else None
+    for event in store.events_for_game(game_id):
+        media_service.drop_event_media(event)
+    if video and video.stored_path:
+        Path(video.stored_path).unlink(missing_ok=True)
+    store.delete_game(game_id)
+    return {"ok": True}
 
 
 @router.post("/{game_id}/process", response_model=ProcessGameResponse)
 def process_game(game_id: str, background_tasks: BackgroundTasks) -> ProcessGameResponse:
     """Start full-game processing (loads manual annotations, generates clips)."""
-    game = store.get_game(game_id)
-    if game is None:
-        raise NotFoundError(f"Game '{game_id}' not found.", code="GAME_NOT_FOUND")
+    _require_game(game_id)
 
     job = job_service.create_job("full_game", game_id=game_id, message="Full game processing queued.")
     background_tasks.add_task(processing_service.process_game_from_annotations, game_id, job.id)
@@ -76,8 +71,8 @@ def process_game(game_id: str, background_tasks: BackgroundTasks) -> ProcessGame
 
 @router.get("/{game_id}/events", response_model=GameEventsResponse)
 def get_game_events(game_id: str) -> GameEventsResponse:
-    if store.get_game(game_id) is None:
-        raise NotFoundError(f"Game '{game_id}' not found.", code="GAME_NOT_FOUND")
+    """Temporary internal shape — replaced by the frontend-contract events router in Task 4."""
+    _require_game(game_id)
     events = store.events_for_game(game_id)
     return GameEventsResponse(
         game_id=game_id,
@@ -99,8 +94,7 @@ def get_game_events(game_id: str) -> GameEventsResponse:
 
 @router.get("/{game_id}/clips", response_model=GameClipsResponse)
 def get_game_clips(game_id: str) -> GameClipsResponse:
-    if store.get_game(game_id) is None:
-        raise NotFoundError(f"Game '{game_id}' not found.", code="GAME_NOT_FOUND")
+    _require_game(game_id)
     clips = store.clips_for_game(game_id)
     return GameClipsResponse(
         game_id=game_id,
