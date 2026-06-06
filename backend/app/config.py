@@ -119,7 +119,7 @@ class Settings(BaseSettings):
     debug_mode: bool = True
 
     # Seed demo games on startup (disabled in tests for isolation/speed).
-    enable_seed: bool = True
+    enable_seed: bool = False  # real imports replaced the demo seeding
 
     @property
     def storage_path(self) -> Path:

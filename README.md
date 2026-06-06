@@ -1,12 +1,15 @@
 # TeloraFooty
 
-Local web app for reviewing soccer footage: import a game (local file or public
-Google Drive link), review shots and goals in a Veo-style player, and export
-clips (30s before → 10s after each event).
+Local web app for analyzing soccer footage: import a game (local file or public
+Google Drive link), let the AI detector find shots and goals automatically,
+review them in a Veo-style player, and export or email clips (8s of build-up →
+4–6s of aftermath around each moment).
 
 ## Requirements
 
 - Python 3.12+, Node 20+, ffmpeg/ffprobe on PATH
+- A Gemini API key for automatic detection (https://aistudio.google.com/apikey).
+  Without one, imports still work and events can be tagged manually.
 
 ## Run
 
@@ -14,7 +17,8 @@ Backend (terminal 1):
 
     cd backend
     python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # first time
-    .venv/bin/uvicorn main:app --port 8000
+    cp .env.example .env   # add GEMINI_API_KEY for detection, SMTP_* for email
+    .venv/bin/uvicorn app.main:app --port 8000
 
 Frontend (terminal 2):
 
@@ -23,6 +27,15 @@ Frontend (terminal 2):
     npm run dev
 
 Open http://localhost:5173
+
+## How it works
+
+Importing a game stores the video, then auto-runs the shot/goal detector in
+the background (short clips: two-stage whole-clip detector; full matches: the
+windowed scan funnel — see `backend/docs/`). The library card shows
+Downloading…/Processing… until events appear. Detected events arrive as
+unverified `ai` events; manual tags and ✓-verified events always survive
+re-analysis (`POST /api/games/{id}/process`).
 
 ## Tests
 
@@ -44,16 +57,14 @@ Open http://localhost:5173
 ## Rating calls
 
 Each event card has ✓ (correct call — stores `verified: true`, shown on the
-card) and ✗ (bad call — removes the event instantly). Verified flags will be
-used to judge the future AI detector's accuracy.
+card) and ✗ (bad call — removes the event instantly). Verified events are
+protected from re-analysis and feed the detector's accuracy tracking.
 
 ## Notes
 
-- Library data lives in `data/games/` (gitignored).
+- Game/event data lives in `backend/app/data/`, media in `backend/storage/`
+  (both gitignored).
 - Drive links must be shared as "anyone with the link".
-- Events are seeded with random placeholder timestamps on import
-  (`backend/importer.py: generate_sample_events`) plus manual tagging.
-  The `source` field is ready for a future AI detector.
 
 ## Emailing clips
 
