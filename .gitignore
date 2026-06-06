@@ -1,8 +1,52 @@
-data/
-.superpowers/
-backend/.venv/
-backend/tests/fixtures/
+# Python
 __pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+backend/.venv/
+
+# Environment
+.env
+backend/.env
+
+# OS
+.DS_Store
+
+# Node / frontend
 node_modules/
 frontend/dist/
-backend/.env
+
+# Legacy MVP data dir + superpowers scratch
+data/
+.superpowers/
+
+# Local storage / generated media (do NOT commit large videos or generated clips)
+backend/storage/uploads/*
+backend/storage/clips/*
+backend/storage/processed/*
+backend/storage/thumbnails/*
+!backend/storage/**/.gitkeep
+backend/storage/annotations/*.tmp
+
+# Local runtime DB / data snapshots
+backend/app/data/*.json
+!backend/app/data/.gitkeep
+
+# Test fixtures
+backend/tests/fixtures/
+
+# Large sample/test videos (do NOT commit large videos)
+*.mp4
+/clips/
+
+# Logs
+*.log
+
+# Model weights (auto-downloaded by ultralytics on first use)
+*.pt

@@ -1,0 +1,15 @@
+# Dordt First Half — ground truth (user-provided)
+# Recall is the priority: we must catch every shot. Extra detections tolerable.
+# First ~23 minutes (second half timestamps to be appended later).
+
+4:56  shot   # high above the crossbar
+10:01 shot
+13:06 shot
+14:04 shot
+14:49 shot
+# 18:07 back pass — NOT a target; fine if we catch it, fine if we don't
+21:45 shot
+22:17 shot   # burst of shots back-to-back 22:17-22:26
+22:19 shot
+22:22 shot
+22:26 shot
