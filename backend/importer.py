@@ -1,3 +1,4 @@
+import random
 import re
 import shutil
 import threading
@@ -8,15 +9,18 @@ import gdown
 import clipper
 import store
 
-# Hardcoded sample events seeded into every imported game: (seconds, type).
-# Timestamps beyond the video duration are skipped.
-SAMPLE_EVENTS = [
-    (310.0, "shot"),
-    (760.0, "shot"),
-    (1180.0, "goal"),
-    (2120.0, "shot"),
-    (2750.0, "goal"),
-]
+
+def generate_sample_events(duration: float) -> list[tuple[float, str]]:
+    """Random placeholder events (seconds, type) until the AI detector fills this in.
+
+    Roughly one event per 4 minutes of footage (min 3, max 8; short clips get 2),
+    ~30% goals, sorted by time, kept inside the video bounds.
+    """
+    count = 2 if duration < 60 else min(8, max(3, int(duration // 240)))
+    lo = min(15.0, duration * 0.2)
+    hi = max(lo + 1.0, duration - 15.0)
+    times = sorted(random.uniform(lo, hi) for _ in range(count))
+    return [(round(t, 1), "goal" if random.random() < 0.3 else "shot") for t in times]
 
 VIDEO_EXTS = {".mp4", ".mov", ".mkv"}
 
@@ -63,7 +67,7 @@ def finalize_game(game_id: str) -> None:
     duration = clipper.probe_duration(video)
     game["durationSec"] = duration
     store.save_game(game)
-    for ts, etype in SAMPLE_EVENTS:
+    for ts, etype in generate_sample_events(duration):
         if ts < duration:
             store.create_event(game_id, etype, ts, source="sample")
     for event in store.load_events(game_id):

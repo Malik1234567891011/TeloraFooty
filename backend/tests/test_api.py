@@ -12,7 +12,8 @@ client = TestClient(app)
 
 @pytest.fixture()
 def ready_game(sample_video, data_dir, tmp_path, monkeypatch):
-    monkeypatch.setattr(importer, "SAMPLE_EVENTS", [(2.0, "shot"), (5.0, "goal")])
+    monkeypatch.setattr(importer, "generate_sample_events",
+                        lambda duration: [(2.0, "shot"), (5.0, "goal")])
     src = tmp_path / "upload.mp4"
     shutil.copy(sample_video, src)
     return importer.import_local(src, "API Game")
@@ -38,7 +39,8 @@ def test_get_missing_game_404(data_dir):
 
 
 def test_import_file_upload(sample_video, data_dir, monkeypatch):
-    monkeypatch.setattr(importer, "SAMPLE_EVENTS", [(2.0, "shot")])
+    monkeypatch.setattr(importer, "generate_sample_events",
+                        lambda duration: [(2.0, "shot")])
     with sample_video.open("rb") as f:
         res = client.post("/api/games/import",
                           files={"file": ("my game.mp4", f, "video/mp4")})

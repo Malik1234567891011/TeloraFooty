@@ -33,5 +33,6 @@ Open http://localhost:5173
 
 - Library data lives in `data/games/` (gitignored).
 - Drive links must be shared as "anyone with the link".
-- Events are seeded from hardcoded samples (`backend/importer.py: SAMPLE_EVENTS`)
-  plus manual tagging. The `source` field is ready for a future AI detector.
+- Events are seeded with random placeholder timestamps on import
+  (`backend/importer.py: generate_sample_events`) plus manual tagging.
+  The `source` field is ready for a future AI detector.

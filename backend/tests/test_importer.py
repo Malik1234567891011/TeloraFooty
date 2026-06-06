@@ -25,9 +25,24 @@ def test_parse_drive_url_rejects_garbage():
         importer.parse_drive_url("https://example.com/video.mp4")
 
 
+def test_generate_sample_events_within_bounds():
+    for duration in (44.0, 600.0, 2700.0, 6000.0):
+        events = importer.generate_sample_events(duration)
+        assert len(events) >= 2
+        assert all(0 <= ts <= duration for ts, _ in events)
+        assert all(etype in ("shot", "goal") for _, etype in events)
+        assert [ts for ts, _ in events] == sorted(ts for ts, _ in events)
+
+
+def test_generate_sample_events_scales_with_duration():
+    assert len(importer.generate_sample_events(44.0)) == 2          # short clip
+    assert len(importer.generate_sample_events(5400.0)) == 8        # full game, capped
+
+
 def test_import_local_full_pipeline(sample_video, data_dir, tmp_path, monkeypatch):
-    # Sample events that fit inside the 10s fixture
-    monkeypatch.setattr(importer, "SAMPLE_EVENTS", [(2.0, "shot"), (5.0, "goal"), (999.0, "shot")])
+    # Deterministic sample events that fit inside the 10s fixture
+    monkeypatch.setattr(importer, "generate_sample_events",
+                        lambda duration: [(2.0, "shot"), (5.0, "goal"), (999.0, "shot")])
     src = tmp_path / "upload.mp4"
     shutil.copy(sample_video, src)
 
