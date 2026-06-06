@@ -5,3 +5,4 @@ backend/tests/fixtures/
 __pycache__/
 node_modules/
 frontend/dist/
+backend/.env
