@@ -126,7 +126,7 @@ export default function Library() {
       <div className="page-head">
         <div>
           <h1>TeloraFooty</h1>
-          <div className="sub">Your match library</div>
+          <div className="sub">Analyzed match library</div>
         </div>
         <span className="spacer" />
         <button className="btn" onClick={() => fileInput.current?.click()} disabled={uploading}>

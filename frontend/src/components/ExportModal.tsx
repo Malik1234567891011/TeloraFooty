@@ -14,7 +14,7 @@ export default function ExportModal({ game, event, onClose }: Props) {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
-  const title = event.type === 'goal' ? 'Goal' : 'Shot on goal'
+  const title = event.type === 'goal' ? 'Goal' : 'Shot'
   const clipUrl = api.clipUrl(game.id, event.id)
   const filename = `${game.title.replaceAll(' ', '_')}_${event.type}_${fmtTime(event.timestamp).replace(':', '')}.mp4`
   const validEmail = /\S+@\S+\.\S+/.test(email)

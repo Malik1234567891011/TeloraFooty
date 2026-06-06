@@ -40,19 +40,19 @@ function setup(overrides: Partial<ClipsPanelProps> = {}) {
 
 test('renders all events on the all tab', () => {
   setup()
-  expect(screen.getByText('Shot on goal')).toBeInTheDocument()
+  expect(screen.getByText('Shot')).toBeInTheDocument()
   expect(screen.getByText('Goal')).toBeInTheDocument()
 })
 
 test('goals tab shows only goals', () => {
   setup({ tab: 'goals' })
-  expect(screen.queryByText('Shot on goal')).not.toBeInTheDocument()
+  expect(screen.queryByText('Shot')).not.toBeInTheDocument()
   expect(screen.getByText('Goal')).toBeInTheDocument()
 })
 
 test('shots tab shows only shots', () => {
   setup({ tab: 'shots' })
-  expect(screen.getByText('Shot on goal')).toBeInTheDocument()
+  expect(screen.getByText('Shot')).toBeInTheDocument()
   expect(screen.queryByText('Goal')).not.toBeInTheDocument()
 })
 

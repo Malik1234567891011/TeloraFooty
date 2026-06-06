@@ -24,7 +24,7 @@ export default function EventCard({
   const [menuOpen, setMenuOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const [flashGood, setFlashGood] = useState(false)
-  const title = event.type === 'goal' ? 'Goal' : 'Shot on goal'
+  const title = event.type === 'goal' ? 'Goal' : 'Shot'
 
   const LEAVE_MS = 600 // keep in sync with the card-out animation in index.css
 
