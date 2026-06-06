@@ -1,3 +1,4 @@
+import re
 import shutil
 import uuid
 from pathlib import Path
@@ -123,7 +124,10 @@ def create_event(game_id: str, body: EventCreate):
     _require_game(game_id)
     event = store.create_event(game_id, body.type, body.timestamp)
     video = store.game_dir(game_id) / "video.mp4"
-    clipper.extract_thumb(video, event["timestamp"], _thumb_path(game_id, event["id"]))
+    try:
+        clipper.extract_thumb(video, event["timestamp"], _thumb_path(game_id, event["id"]))
+    except RuntimeError:
+        pass  # thumb is best-effort; the event itself is already persisted
     return event
 
 
@@ -136,7 +140,10 @@ def patch_event(game_id: str, event_id: str, body: EventPatch):
         raise HTTPException(404, "Event not found")
     if "timestamp" in changes:
         video = store.game_dir(game_id) / "video.mp4"
-        clipper.extract_thumb(video, event["timestamp"], _thumb_path(game_id, event_id))
+        try:
+            clipper.extract_thumb(video, event["timestamp"], _thumb_path(game_id, event_id))
+        except RuntimeError:
+            pass  # thumb is best-effort; the event itself is already persisted
     return event
 
 
@@ -151,6 +158,7 @@ def delete_event(game_id: str, event_id: str):
 
 @app.get("/api/games/{game_id}/events/{event_id}/thumb.jpg")
 def event_thumb(game_id: str, event_id: str):
+    _require_game(game_id)
     thumb = _thumb_path(game_id, event_id)
     if not thumb.exists():
         raise HTTPException(404, "Thumbnail not found")
@@ -166,7 +174,8 @@ def export_event(game_id: str, event_id: str):
     video = store.game_dir(game_id) / "video.mp4"
     ts = event["timestamp"]
     stamp = f"{int(ts // 60):02d}{int(ts % 60):02d}"
-    filename = f"{game['title'].replace(' ', '_')}_{event['type']}_{stamp}.mp4"
+    safe_title = re.sub(r"[^\w\-]", "_", game["title"])
+    filename = f"{safe_title}_{event['type']}_{stamp}.mp4"
     out = store.game_dir(game_id) / "exports" / filename
     try:
         clipper.export_clip(video, event["clipStart"], event["clipEnd"], out)
