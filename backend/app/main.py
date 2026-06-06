@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import analysis, clips, events, games, health, jobs, videos
+from app.api.routes import analysis, clips, events, games, health, jobs, media, videos
 from app.config import settings
 from app.core.errors import AppError, error_response
 from app.core.logging import get_logger
@@ -71,6 +71,7 @@ app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(videos.router, prefix="/api/videos", tags=["videos"])
 app.include_router(games.router, prefix="/api/games", tags=["games"])
 app.include_router(events.router, prefix="/api/games", tags=["events"])
+app.include_router(media.router, prefix="/api/games", tags=["media"])
 app.include_router(clips.router, prefix="/api/clips", tags=["clips"])
 app.include_router(analysis.router, prefix="/api/analysis", tags=["analysis"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
