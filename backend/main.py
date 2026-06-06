@@ -1,11 +1,13 @@
 import shutil
 import uuid
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+import clipper
 import importer
 import store
 
@@ -15,6 +17,16 @@ app = FastAPI(title="TeloraFooty")
 class DriveRequest(BaseModel):
     url: str
     fileIds: list[str] | None = None
+
+
+class EventCreate(BaseModel):
+    type: Literal["shot", "goal"]
+    timestamp: float
+
+
+class EventPatch(BaseModel):
+    type: Literal["shot", "goal"] | None = None
+    timestamp: float | None = None
 
 
 @app.get("/api/health")
@@ -87,3 +99,77 @@ def stream_video(game_id: str):
         raise HTTPException(404, "Video not found")
     # Starlette FileResponse handles HTTP Range requests (seeking).
     return FileResponse(video, media_type="video/mp4")
+
+
+def _require_game(game_id: str) -> dict:
+    game = store.load_game(game_id)
+    if game is None:
+        raise HTTPException(404, "Game not found")
+    return game
+
+
+def _thumb_path(game_id: str, event_id: str) -> Path:
+    return store.game_dir(game_id) / "thumbs" / f"{event_id}.jpg"
+
+
+@app.get("/api/games/{game_id}/events")
+def list_events(game_id: str):
+    _require_game(game_id)
+    return store.load_events(game_id)
+
+
+@app.post("/api/games/{game_id}/events")
+def create_event(game_id: str, body: EventCreate):
+    _require_game(game_id)
+    event = store.create_event(game_id, body.type, body.timestamp)
+    video = store.game_dir(game_id) / "video.mp4"
+    clipper.extract_thumb(video, event["timestamp"], _thumb_path(game_id, event["id"]))
+    return event
+
+
+@app.patch("/api/games/{game_id}/events/{event_id}")
+def patch_event(game_id: str, event_id: str, body: EventPatch):
+    _require_game(game_id)
+    changes = body.model_dump(exclude_none=True)
+    event = store.update_event(game_id, event_id, changes)
+    if event is None:
+        raise HTTPException(404, "Event not found")
+    if "timestamp" in changes:
+        video = store.game_dir(game_id) / "video.mp4"
+        clipper.extract_thumb(video, event["timestamp"], _thumb_path(game_id, event_id))
+    return event
+
+
+@app.delete("/api/games/{game_id}/events/{event_id}")
+def delete_event(game_id: str, event_id: str):
+    _require_game(game_id)
+    if not store.delete_event(game_id, event_id):
+        raise HTTPException(404, "Event not found")
+    _thumb_path(game_id, event_id).unlink(missing_ok=True)
+    return {"ok": True}
+
+
+@app.get("/api/games/{game_id}/events/{event_id}/thumb.jpg")
+def event_thumb(game_id: str, event_id: str):
+    thumb = _thumb_path(game_id, event_id)
+    if not thumb.exists():
+        raise HTTPException(404, "Thumbnail not found")
+    return FileResponse(thumb, media_type="image/jpeg")
+
+
+@app.post("/api/games/{game_id}/events/{event_id}/export")
+def export_event(game_id: str, event_id: str):
+    game = _require_game(game_id)
+    event = next((e for e in store.load_events(game_id) if e["id"] == event_id), None)
+    if event is None:
+        raise HTTPException(404, "Event not found")
+    video = store.game_dir(game_id) / "video.mp4"
+    ts = event["timestamp"]
+    stamp = f"{int(ts // 60):02d}{int(ts % 60):02d}"
+    filename = f"{game['title'].replace(' ', '_')}_{event['type']}_{stamp}.mp4"
+    out = store.game_dir(game_id) / "exports" / filename
+    try:
+        clipper.export_clip(video, event["clipStart"], event["clipEnd"], out)
+    except RuntimeError as exc:
+        raise HTTPException(500, f"Export failed: {exc}")
+    return FileResponse(out, media_type="video/mp4", filename=filename)
