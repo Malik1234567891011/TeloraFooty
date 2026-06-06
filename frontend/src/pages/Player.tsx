@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
+import ClipsPanel from '../components/ClipsPanel'
 import VideoPlayer from '../components/VideoPlayer'
-import { clipEnded, startTime, type FilterTab, type Mode } from '../playback'
-import type { Game, GameEvent } from '../types'
+import { clipEnded, fmtTime, startTime, type FilterTab, type Mode } from '../playback'
+import type { EventType, Game, GameEvent } from '../types'
 
 export default function Player() {
   const { id } = useParams<{ id: string }>()
@@ -53,8 +54,47 @@ export default function Player() {
     }
   }
 
-  // Task 10 removes these — needed for ClipsPanel wiring
-  void tab; void setTab; void switchMode
+  async function tagEvent(type: EventType) {
+    const t = videoRef.current?.currentTime ?? 0
+    try {
+      const ev = await api.createEvent(gameId, type, t)
+      await refreshEvents()
+      setSelected(ev)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
+  async function deleteEvent(ev: GameEvent) {
+    if (!window.confirm(`Delete this ${ev.type}?`)) return
+    await api.deleteEvent(gameId, ev.id)
+    if (selected?.id === ev.id) setSelected(null)
+    await refreshEvents()
+  }
+
+  async function switchType(ev: GameEvent) {
+    await api.patchEvent(gameId, ev.id, { type: ev.type === 'goal' ? 'shot' : 'goal' })
+    await refreshEvents()
+  }
+
+  async function setTimeToPlayhead(ev: GameEvent) {
+    const t = videoRef.current?.currentTime ?? ev.timestamp
+    await api.patchEvent(gameId, ev.id, { timestamp: t })
+    await refreshEvents()
+  }
+
+  async function exportEvent(ev: GameEvent) {
+    try {
+      const blob = await api.exportClip(gameId, ev.id)
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `${game!.title.replaceAll(' ', '_')}_${ev.type}_${fmtTime(ev.timestamp).replace(':', '')}.mp4`
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
 
   if (!game) return <div className="page">{error ?? 'Loading…'}</div>
 
@@ -81,8 +121,21 @@ export default function Player() {
           onTimeUpdate={onTimeUpdate}
           onSelectEvent={selectEvent}
         />
-        {/* ClipsPanel mounts here in Task 10 */}
-        <div className="clips-panel" data-placeholder />
+        <ClipsPanel
+          gameId={gameId}
+          events={events}
+          tab={tab}
+          onTab={setTab}
+          mode={mode}
+          onMode={switchMode}
+          selected={selected}
+          onSelect={selectEvent}
+          onTag={tagEvent}
+          onDelete={deleteEvent}
+          onSwitchType={switchType}
+          onSetTimeToPlayhead={setTimeToPlayhead}
+          onExport={exportEvent}
+        />
       </div>
     </div>
   )
