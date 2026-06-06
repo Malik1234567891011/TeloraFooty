@@ -104,6 +104,16 @@ def test_patch_event(ready_game):
     assert res.json()["timestamp"] == 6.0
 
 
+def test_patch_event_verified(ready_game):
+    ev = client.get(f"/api/games/{ready_game['id']}/events").json()[0]
+    assert ev["verified"] is False
+    res = client.patch(f"/api/games/{ready_game['id']}/events/{ev['id']}",
+                       json={"verified": True})
+    assert res.status_code == 200
+    assert res.json()["verified"] is True
+    assert res.json()["type"] == ev["type"]  # untouched
+
+
 def test_delete_event_api(ready_game):
     ev = client.get(f"/api/games/{ready_game['id']}/events").json()[0]
     assert client.delete(f"/api/games/{ready_game['id']}/events/{ev['id']}").status_code == 200

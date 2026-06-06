@@ -97,6 +97,27 @@ export default function Player() {
     }
   }
 
+  async function confirmEvent(ev: GameEvent) {
+    try {
+      const updated = await api.patchEvent(gameId, ev.id, { verified: !ev.verified })
+      if (selected?.id === ev.id) setSelected(updated)
+      await refreshEvents()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
+  async function removeEvent(ev: GameEvent) {
+    // Bad call — one click, no confirm dialog.
+    try {
+      await api.deleteEvent(gameId, ev.id)
+      if (selected?.id === ev.id) setSelected(null)
+      await refreshEvents()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   async function exportEvent(ev: GameEvent) {
     try {
       const blob = await api.exportClip(gameId, ev.id)
@@ -134,6 +155,7 @@ export default function Player() {
           videoRef={videoRef}
           onTimeUpdate={onTimeUpdate}
           onSelectEvent={selectEvent}
+          onTag={tagEvent}
         />
         <ClipsPanel
           gameId={gameId}
@@ -149,8 +171,15 @@ export default function Player() {
           onSwitchType={switchType}
           onSetTimeToPlayhead={setTimeToPlayhead}
           onExport={exportEvent}
+          onConfirm={confirmEvent}
+          onRemove={removeEvent}
         />
       </div>
+
+      <p className="kbd-hints">
+        Space play/pause · ←/→ ±5s · <strong>H</strong> tag shot · <strong>G</strong> tag goal ·
+        N/P next/prev event · +/− speed · F fullscreen
+      </p>
     </div>
   )
 }

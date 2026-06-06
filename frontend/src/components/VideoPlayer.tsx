@@ -1,7 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { fmtTime, nextEvent, type Mode } from '../playback'
-import type { GameEvent } from '../types'
+import type { EventType, GameEvent } from '../types'
+
+const SPEEDS = [0.5, 1, 1.5, 2, 4]
 
 interface Props {
   gameId: string
@@ -12,10 +14,11 @@ interface Props {
   videoRef: React.RefObject<HTMLVideoElement | null>
   onTimeUpdate: (time: number) => void
   onSelectEvent: (event: GameEvent) => void
+  onTag: (type: EventType) => void
 }
 
 export default function VideoPlayer({
-  gameId, duration, events, mode, selected, videoRef, onTimeUpdate, onSelectEvent,
+  gameId, duration, events, mode, selected, videoRef, onTimeUpdate, onSelectEvent, onTag,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [time, setTime] = useState(0)
@@ -37,7 +40,7 @@ export default function VideoPlayer({
   }
 
   function jumpEvent(dir: 1 | -1) {
-    const ev = nextEvent(events, time, dir)
+    const ev = nextEvent(events, selected, time, dir)
     if (ev) onSelectEvent(ev)
   }
 
@@ -54,6 +57,61 @@ export default function VideoPlayer({
     const v = video()
     if (v) v.playbackRate = value
   }
+
+  function stepSpeed(dir: 1 | -1) {
+    const idx = SPEEDS.indexOf(speed)
+    const next = SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, idx + dir))]
+    changeSpeed(next)
+  }
+
+  // Veo-style keyboard shortcuts: H = tag shot (Veo's clip key), G = tag goal,
+  // +/- = speed, Space/K = play/pause, arrows = ±5s, N/P = next/prev event, F = fullscreen.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
+      switch (e.key.toLowerCase()) {
+        case ' ':
+        case 'k':
+          e.preventDefault()
+          togglePlay()
+          break
+        case 'arrowleft':
+          e.preventDefault()
+          skip(-5)
+          break
+        case 'arrowright':
+          e.preventDefault()
+          skip(5)
+          break
+        case '+':
+        case '=':
+          stepSpeed(1)
+          break
+        case '-':
+          stepSpeed(-1)
+          break
+        case 'h':
+          onTag('shot')
+          break
+        case 'g':
+          onTag('goal')
+          break
+        case 'n':
+          jumpEvent(1)
+          break
+        case 'p':
+          jumpEvent(-1)
+          break
+        case 'f':
+          wrapRef.current?.requestFullscreen()
+          break
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
 
   const badge = selected
     ? `${mode === 'clip' ? 'CLIP' : 'FULL'} · ${selected.type.toUpperCase()} ${fmtTime(selected.timestamp)}`
@@ -78,11 +136,11 @@ export default function VideoPlayer({
       </div>
 
       <div className="controls">
-        <button onClick={togglePlay} title="Play/pause">{playing ? '❚❚' : '▶'}</button>
-        <button onClick={() => jumpEvent(-1)} title="Previous event">⇤</button>
-        <button onClick={() => jumpEvent(1)} title="Next event">⇥</button>
-        <button onClick={() => skip(-5)} title="Back 5s">↺5</button>
-        <button onClick={() => skip(5)} title="Forward 5s">5↻</button>
+        <button onClick={togglePlay} title="Play/pause (Space)">{playing ? '❚❚' : '▶'}</button>
+        <button onClick={() => jumpEvent(-1)} title="Previous event (P)">⇤</button>
+        <button onClick={() => jumpEvent(1)} title="Next event (N)">⇥</button>
+        <button onClick={() => skip(-5)} title="Back 5s (←)">↺5</button>
+        <button onClick={() => skip(5)} title="Forward 5s (→)">5↻</button>
 
         <div className="timeline" onClick={onScrub}>
           <div className="track">
@@ -103,10 +161,10 @@ export default function VideoPlayer({
         </div>
 
         <span className="time">{fmtTime(time)} / {fmtTime(duration)}</span>
-        <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} title="Speed">
-          {[0.5, 1, 1.5, 2].map((s) => <option key={s} value={s}>{s}x</option>)}
+        <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} title="Speed (+/-)">
+          {SPEEDS.map((s) => <option key={s} value={s}>{s}x</option>)}
         </select>
-        <button onClick={() => wrapRef.current?.requestFullscreen()} title="Fullscreen">⛶</button>
+        <button onClick={() => wrapRef.current?.requestFullscreen()} title="Fullscreen (F)">⛶</button>
       </div>
     </div>
   )

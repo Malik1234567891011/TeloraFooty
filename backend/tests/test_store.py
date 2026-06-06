@@ -35,7 +35,16 @@ def test_create_event_computes_clip_bounds(data_dir):
     assert ev["clipStart"] == 20.0
     assert ev["clipEnd"] == 60.0
     assert ev["source"] == "manual"
+    assert ev["verified"] is False
     assert store.load_events(game["id"]) == [ev]
+
+
+def test_update_event_verified(data_dir):
+    game = make_game()
+    ev = store.create_event(game["id"], "shot", 50.0)
+    updated = store.update_event(game["id"], ev["id"], {"verified": True})
+    assert updated["verified"] is True
+    assert updated["timestamp"] == 50.0  # untouched
 
 
 def test_events_sorted_by_timestamp(data_dir):

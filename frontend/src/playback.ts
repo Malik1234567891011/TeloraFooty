@@ -23,9 +23,25 @@ export function startTime(mode: Mode, event: GameEvent): number {
   return mode === 'clip' ? event.clipStart : event.timestamp
 }
 
-/** Next (dir=1) or previous (dir=-1) event relative to the current time. */
-export function nextEvent(events: GameEvent[], currentTime: number, dir: 1 | -1): GameEvent | null {
+/**
+ * Next (dir=1) or previous (dir=-1) event.
+ *
+ * With a selected event, navigation follows event order — the playhead can sit
+ * 30s before the selected timestamp in clip mode, so playhead-relative search
+ * would keep re-finding the same event. Without a selection it falls back to
+ * the playhead position.
+ */
+export function nextEvent(
+  events: GameEvent[],
+  selected: GameEvent | null,
+  currentTime: number,
+  dir: 1 | -1,
+): GameEvent | null {
   const sorted = sortEvents(events)
+  if (selected) {
+    const idx = sorted.findIndex((e) => e.id === selected.id)
+    if (idx !== -1) return sorted[idx + dir] ?? null
+  }
   if (dir === 1) return sorted.find((e) => e.timestamp > currentTime + 0.5) ?? null
   return [...sorted].reverse().find((e) => e.timestamp < currentTime - 0.5) ?? null
 }

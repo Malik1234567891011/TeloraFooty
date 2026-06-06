@@ -8,6 +8,7 @@ const ev = (id: string, type: 'shot' | 'goal', timestamp: number): GameEvent => 
   type,
   timestamp,
   source: 'sample',
+  verified: false,
   clipStart: Math.max(0, timestamp - 30),
   clipEnd: timestamp + 10,
 })
@@ -29,6 +30,8 @@ function setup(overrides: Partial<ClipsPanelProps> = {}) {
     onSwitchType: vi.fn(),
     onSetTimeToPlayhead: vi.fn(),
     onExport: vi.fn(),
+    onConfirm: vi.fn(),
+    onRemove: vi.fn(),
     ...overrides,
   }
   render(<ClipsPanel {...props} />)
@@ -82,4 +85,21 @@ test('export button calls onExport with the event', () => {
   const props = setup()
   fireEvent.click(screen.getAllByTitle('Export clip')[0])
   expect(props.onExport).toHaveBeenCalledWith(events[0])
+})
+
+test('confirm button calls onConfirm with the event', () => {
+  const props = setup()
+  fireEvent.click(screen.getAllByTitle('Correct call')[0])
+  expect(props.onConfirm).toHaveBeenCalledWith(events[0])
+})
+
+test('remove button calls onRemove with the event', () => {
+  const props = setup()
+  fireEvent.click(screen.getAllByTitle('Bad call — remove')[0])
+  expect(props.onRemove).toHaveBeenCalledWith(events[0])
+})
+
+test('verified event shows the verified state', () => {
+  setup({ events: [{ ...events[0], verified: true }] })
+  expect(screen.getAllByTitle('Correct call')[0].className).toContain('confirmed')
 })

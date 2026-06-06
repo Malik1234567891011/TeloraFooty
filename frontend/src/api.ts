@@ -37,7 +37,7 @@ export const api = {
     fetch(`/api/games/${gameId}/events`).then((r) => asJson<GameEvent[]>(r)),
   createEvent: (gameId: string, type: EventType, timestamp: number) =>
     post(`/api/games/${gameId}/events`, { type, timestamp }).then((r) => asJson<GameEvent>(r)),
-  patchEvent: (gameId: string, eventId: string, changes: { type?: EventType; timestamp?: number }) =>
+  patchEvent: (gameId: string, eventId: string, changes: { type?: EventType; timestamp?: number; verified?: boolean }) =>
     fetch(`/api/games/${gameId}/events/${eventId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

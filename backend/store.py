@@ -54,7 +54,10 @@ def load_events(game_id: str) -> list[dict]:
     f = game_dir(game_id) / "events.json"
     if not f.exists():
         return []
-    return json.loads(f.read_text())["events"]
+    events = json.loads(f.read_text())["events"]
+    for e in events:
+        e.setdefault("verified", False)  # events written before the rating feature
+    return events
 
 
 def save_events(game_id: str, events: list[dict]) -> None:
@@ -76,6 +79,7 @@ def create_event(game_id: str, etype: str, timestamp: float, source: str = "manu
         "type": etype,
         "timestamp": timestamp,
         "source": source,
+        "verified": False,
         "clipStart": start,
         "clipEnd": end,
     }
@@ -90,7 +94,7 @@ def update_event(game_id: str, event_id: str, changes: dict) -> dict | None:
     events = load_events(game_id)
     for e in events:
         if e["id"] == event_id:
-            e.update({k: changes[k] for k in ("type", "timestamp") if k in changes})
+            e.update({k: changes[k] for k in ("type", "timestamp", "verified") if k in changes})
             e["clipStart"], e["clipEnd"] = clamp_clip(e["timestamp"], game["durationSec"])
             save_events(game_id, events)
             return e

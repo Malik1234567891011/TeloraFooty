@@ -148,6 +148,9 @@ a { color: inherit; text-decoration: none; }
 .event-card .actions { margin-left: auto; display: flex; gap: 4px; }
 .event-card .actions button { background: none; border: none; color: var(--muted); font-size: 14px; }
 .event-card .actions button:hover { color: var(--text); }
+.event-card .actions .rate:hover { color: var(--green); }
+.event-card .actions .rate.confirmed { color: var(--green); }
+.event-card .actions .rate.bad:hover { color: var(--red); }
 
 .menu {
   position: absolute; right: 6px; top: 36px; background: var(--bg); border: 1px solid var(--line);
@@ -158,3 +161,6 @@ a { color: inherit; text-decoration: none; }
 
 .tag-menu { position: relative; }
 .tag-menu .menu { top: 28px; }
+
+.kbd-hints { color: var(--muted); font-size: 12px; text-align: center; margin-top: 12px; }
+.kbd-hints strong { color: var(--text); }

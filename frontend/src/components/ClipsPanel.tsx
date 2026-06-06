@@ -17,6 +17,8 @@ export interface ClipsPanelProps {
   onSwitchType: (event: GameEvent) => void
   onSetTimeToPlayhead: (event: GameEvent) => void
   onExport: (event: GameEvent) => void
+  onConfirm: (event: GameEvent) => void
+  onRemove: (event: GameEvent) => void
 }
 
 const TABS: { key: FilterTab; label: string }[] = [
@@ -28,6 +30,7 @@ const TABS: { key: FilterTab; label: string }[] = [
 export default function ClipsPanel({
   gameId, events, tab, onTab, mode, onMode, selected,
   onSelect, onTag, onDelete, onSwitchType, onSetTimeToPlayhead, onExport,
+  onConfirm, onRemove,
 }: ClipsPanelProps) {
   const [tagOpen, setTagOpen] = useState(false)
   const visible = sortEvents(filterEvents(events, tab))
@@ -78,6 +81,8 @@ export default function ClipsPanel({
           onSwitchType={() => onSwitchType(ev)}
           onSetTimeToPlayhead={() => onSetTimeToPlayhead(ev)}
           onExport={() => onExport(ev)}
+          onConfirm={() => onConfirm(ev)}
+          onRemove={() => onRemove(ev)}
         />
       ))}
       {visible.length === 0 && (

@@ -12,10 +12,13 @@ interface Props {
   onSwitchType: () => void
   onSetTimeToPlayhead: () => void
   onExport: () => void
+  onConfirm: () => void
+  onRemove: () => void
 }
 
 export default function EventCard({
   gameId, event, selected, onSelect, onDelete, onSwitchType, onSetTimeToPlayhead, onExport,
+  onConfirm, onRemove,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const title = event.type === 'goal' ? 'Goal' : 'Shot on goal'
@@ -28,9 +31,15 @@ export default function EventCard({
       </span>
       <span>
         <div className={`ttl ${event.type}`}>{title}</div>
-        <div className="src">{event.source}</div>
+        <div className="src">{event.source}{event.verified ? ' · verified' : ''}</div>
       </span>
       <span className="actions" onClick={(e) => e.stopPropagation()}>
+        <button
+          className={`rate${event.verified ? ' confirmed' : ''}`}
+          title="Correct call"
+          onClick={onConfirm}
+        >✓</button>
+        <button className="rate bad" title="Bad call — remove" onClick={onRemove}>✗</button>
         <button title="Export clip" onClick={onExport}>⤓</button>
         <button title="More" onClick={() => setMenuOpen(!menuOpen)}>⋮</button>
       </span>

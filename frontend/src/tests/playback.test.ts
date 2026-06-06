@@ -7,6 +7,7 @@ const ev = (id: string, type: 'shot' | 'goal', timestamp: number): GameEvent => 
   type,
   timestamp,
   source: 'manual',
+  verified: false,
   clipStart: Math.max(0, timestamp - 30),
   clipEnd: timestamp + 10,
 })
@@ -45,12 +46,30 @@ test('startTime: clipStart in clip mode, timestamp in full mode', () => {
   expect(startTime('full', e)).toBe(100)
 })
 
-describe('nextEvent', () => {
-  test('finds next after current time', () => expect(nextEvent(events, 150, 1)?.id).toBe('e2'))
-  test('finds previous before current time', () => expect(nextEvent(events, 150, -1)?.id).toBe('e1'))
+describe('nextEvent without a selection (playhead-based)', () => {
+  test('finds next after current time', () => expect(nextEvent(events, null, 150, 1)?.id).toBe('e2'))
+  test('finds previous before current time', () => expect(nextEvent(events, null, 150, -1)?.id).toBe('e1'))
   test('null at the edges', () => {
-    expect(nextEvent(events, 300, 1)).toBeNull()
-    expect(nextEvent(events, 100, -1)).toBeNull()
+    expect(nextEvent(events, null, 300, 1)).toBeNull()
+    expect(nextEvent(events, null, 100, -1)).toBeNull()
+  })
+})
+
+describe('nextEvent with a selection (event-order based)', () => {
+  const selected = events.find((e) => e.id === 'e2')!
+  test('next returns the following event even when playhead is before the selected timestamp (clip mode)', () => {
+    // In clip mode the playhead sits 30s BEFORE the selected event's timestamp —
+    // navigation must follow event order, not the playhead.
+    expect(nextEvent(events, selected, selected.clipStart, 1)?.id).toBe('e3')
+  })
+  test('prev returns the preceding event', () => {
+    expect(nextEvent(events, selected, selected.clipStart, -1)?.id).toBe('e1')
+  })
+  test('null at the edges', () => {
+    const last = events.find((e) => e.id === 'e3')!
+    const first = events.find((e) => e.id === 'e1')!
+    expect(nextEvent(events, last, 270, 1)).toBeNull()
+    expect(nextEvent(events, first, 70, -1)).toBeNull()
   })
 })
 

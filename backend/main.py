@@ -28,6 +28,7 @@ class EventCreate(BaseModel):
 class EventPatch(BaseModel):
     type: Literal["shot", "goal"] | None = None
     timestamp: float | None = None
+    verified: bool | None = None
 
 
 @app.get("/api/health")

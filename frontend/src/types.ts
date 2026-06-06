@@ -5,6 +5,7 @@ export interface GameEvent {
   type: EventType
   timestamp: number
   source: 'manual' | 'sample' | 'ai'
+  verified: boolean
   clipStart: number
   clipEnd: number
 }
