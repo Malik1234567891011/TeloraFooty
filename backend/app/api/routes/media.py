@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from app.api.routes.events import _require_event, _require_game
 from app.core.errors import AppError
-from app.services import media_service
+from app.services import email_service, media_service
 from app.services.store import store
 
 router = APIRouter()
@@ -47,3 +49,31 @@ def event_clip(game_id: str, event_id: str) -> FileResponse:
     except AppError as exc:
         raise HTTPException(exc.status_code, exc.message)
     return FileResponse(path, media_type="video/mp4")
+
+
+class EmailRequest(BaseModel):
+    to: str
+
+
+@router.post("/{game_id}/events/{event_id}/email")
+def email_clip(game_id: str, event_id: str, body: EmailRequest) -> dict:
+    if not re.fullmatch(r"\S+@\S+\.\S+", body.to.strip()):
+        raise HTTPException(422, "Enter a valid email address")
+    game = _require_game(game_id)
+    event = _require_event(game_id, event_id)
+    try:
+        clip = media_service.ensure_event_clip(game, event)
+    except AppError as exc:
+        raise HTTPException(500, f"Export failed: {exc.message}")
+    ts = event.timestamp_seconds
+    when = f"{int(ts // 60)}:{int(ts % 60):02d}"
+    subject = f"TeloraFooty clip: {game.title} — {event.event_type} at {when}"
+    text = (f"Clip from {game.title} ({game.created_at.date().isoformat()}): "
+            f"{event.event_type} at {when}. Video attached.")
+    try:
+        email_service.send_clip_email(body.to.strip(), subject, text, clip)
+    except email_service.EmailNotConfigured as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:
+        raise HTTPException(502, f"Email failed: {exc}")
+    return {"ok": True}
