@@ -11,7 +11,7 @@ export default function Player() {
   const gameId = id!
   const [game, setGame] = useState<Game | null>(null)
   const [events, setEvents] = useState<GameEvent[]>([])
-  const [mode, setMode] = useState<Mode>('clip')
+  const [mode, setMode] = useState<Mode>('full')
   const [tab, setTab] = useState<FilterTab>('all')
   const [selected, setSelected] = useState<GameEvent | null>(null)
   const [error, setError] = useState<string | null>(null)

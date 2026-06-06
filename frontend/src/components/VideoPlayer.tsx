@@ -27,6 +27,15 @@ export default function VideoPlayer({
   const [speed, setSpeed] = useState(1)
   const [controlsVisible, setControlsVisible] = useState(true)
   const [burst, setBurst] = useState<{ icon: string; id: number } | null>(null)
+  const [modeBurst, setModeBurst] = useState<{ label: string; id: number } | null>(null)
+  const prevMode = useRef(mode)
+
+  // Announce mode switches over the video so the change is unmistakable.
+  useEffect(() => {
+    if (prevMode.current === mode) return // initial mount (StrictMode-safe)
+    prevMode.current = mode
+    setModeBurst({ label: mode === 'clip' ? 'CLIP MODE' : 'FULL GAME', id: Date.now() })
+  }, [mode])
 
   const video = () => videoRef.current
 
@@ -169,10 +178,17 @@ export default function VideoPlayer({
             onTimeUpdate(t)
           }}
         />
-        <div className="mode-badge">{badge}</div>
+        <div className="mode-badge" key={badge}>{badge}</div>
 
         {/* Netflix-style center burst on play/pause */}
         {burst && <div className="play-burst" key={burst.id}>{burst.icon}</div>}
+
+        {/* Big mode announcement when toggling Clip / Full game */}
+        {modeBurst && (
+          <div className={`mode-burst${modeBurst.label === 'CLIP MODE' ? ' clip' : ''}`} key={modeBurst.id}>
+            {modeBurst.label}
+          </div>
+        )}
 
         {/* Veo-style: controls live on the video under a gradient scrim */}
         <div className={`video-overlay${controlsVisible ? '' : ' hidden'}`}>
