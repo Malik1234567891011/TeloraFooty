@@ -78,7 +78,8 @@ export default function Player() {
 
   async function switchType(ev: GameEvent) {
     try {
-      await api.patchEvent(gameId, ev.id, { type: ev.type === 'goal' ? 'shot' : 'goal' })
+      const updated = await api.patchEvent(gameId, ev.id, { type: ev.type === 'goal' ? 'shot' : 'goal' })
+      if (selected?.id === ev.id) setSelected(updated)
       await refreshEvents()
     } catch (e) {
       setError((e as Error).message)
@@ -88,7 +89,8 @@ export default function Player() {
   async function setTimeToPlayhead(ev: GameEvent) {
     const t = videoRef.current?.currentTime ?? ev.timestamp
     try {
-      await api.patchEvent(gameId, ev.id, { timestamp: t })
+      const updated = await api.patchEvent(gameId, ev.id, { timestamp: t })
+      if (selected?.id === ev.id) setSelected(updated)
       await refreshEvents()
     } catch (e) {
       setError((e as Error).message)
