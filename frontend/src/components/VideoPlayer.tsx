@@ -26,6 +26,7 @@ export default function VideoPlayer({
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [controlsVisible, setControlsVisible] = useState(true)
+  const [burst, setBurst] = useState<{ icon: string; id: number } | null>(null)
 
   const video = () => videoRef.current
 
@@ -155,10 +156,12 @@ export default function VideoPlayer({
           onPlay={() => {
             setPlaying(true)
             pokeControls()
+            setBurst({ icon: '▶', id: Date.now() })
           }}
           onPause={() => {
             setPlaying(false)
             setControlsVisible(true)
+            setBurst({ icon: '❚❚', id: Date.now() })
           }}
           onTimeUpdate={(e) => {
             const t = e.currentTarget.currentTime
@@ -167,6 +170,9 @@ export default function VideoPlayer({
           }}
         />
         <div className="mode-badge">{badge}</div>
+
+        {/* Netflix-style center burst on play/pause */}
+        {burst && <div className="play-burst" key={burst.id}>{burst.icon}</div>}
 
         {/* Veo-style: controls live on the video under a gradient scrim */}
         <div className={`video-overlay${controlsVisible ? '' : ' hidden'}`}>
@@ -190,12 +196,16 @@ export default function VideoPlayer({
           </div>
 
           <div className="controls-row">
-            <button onClick={togglePlay} title="Play/pause (Space)">{playing ? '❚❚' : '▶'}</button>
-            <button onClick={() => jumpEvent(-1)} title="Previous event (P)">⇤</button>
-            <button onClick={() => jumpEvent(1)} title="Next event (N)">⇥</button>
-            <button onClick={() => skip(-5)} title="Back 5s (←)">↺5</button>
-            <button onClick={() => skip(5)} title="Forward 5s (→)">5↻</button>
             <span className="time">{fmtTime(relTime)} / {fmtTime(winLen)}</span>
+            <div className="transport">
+              <button onClick={() => jumpEvent(-1)} title="Previous event (P)">⇤</button>
+              <button onClick={() => skip(-5)} title="Back 5s (←)">↺5</button>
+              <button className="play-btn" onClick={togglePlay} title="Play/pause (Space)">
+                {playing ? '❚❚' : '▶'}
+              </button>
+              <button onClick={() => skip(5)} title="Forward 5s (→)">5↻</button>
+              <button onClick={() => jumpEvent(1)} title="Next event (N)">⇥</button>
+            </div>
             <div className="right">
               <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} title="Speed (+/-)">
                 {SPEEDS.map((s) => <option key={s} value={s}>{s}x</option>)}
