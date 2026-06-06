@@ -13,5 +13,6 @@ class Event(BaseModel):
     period: int | None = None
     confidence: float = 1.0
     source: str = "manual"  # manual | model | hybrid
+    verified: bool = False
     notes: str | None = None
     clip_id: str | None = None

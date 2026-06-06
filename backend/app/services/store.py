@@ -125,6 +125,31 @@ class JsonStore:
             self._save_collection("events", self.events.values())
             self._save_collection("clips", self.clips.values())
 
+    def delete_event(self, event_id: str) -> bool:
+        with self._lock:
+            if self.events.pop(event_id, None) is None:
+                return False
+            self._save_collection("events", self.events.values())
+        return True
+
+    def delete_clip(self, clip_id: str) -> None:
+        with self._lock:
+            if self.clips.pop(clip_id, None) is not None:
+                self._save_collection("clips", self.clips.values())
+
+    def delete_game(self, game_id: str) -> bool:
+        with self._lock:
+            game = self.games.pop(game_id, None)
+            if game is None:
+                return False
+            if game.video_id:
+                self.videos.pop(game.video_id, None)
+            self.events = {k: v for k, v in self.events.items() if v.game_id != game_id}
+            self.clips = {k: v for k, v in self.clips.items() if v.game_id != game_id}
+            self.jobs = {k: v for k, v in self.jobs.items() if v.game_id != game_id}
+            self._persist()
+        return True
+
 
 # Module-level singleton used across the app.
 store = JsonStore()

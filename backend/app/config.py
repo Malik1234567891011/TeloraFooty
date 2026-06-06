@@ -46,6 +46,18 @@ class Settings(BaseSettings):
     clip_post_seconds: float = 4.0
     clip_post_seconds_goal: float = 6.0
 
+    # Auto-analysis dispatch: videos at or below this duration go through the
+    # whole-clip detector; longer ones through the full-match funnel.
+    short_clip_max_seconds: float = 180.0
+
+    # SMTP clip emailing (ported from the MVP backend). For Gmail use an app
+    # password from https://myaccount.google.com/apppasswords.
+    smtp_user: str = ""
+    smtp_pass: str = ""
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_from: str = ""
+
     # Player-based attack detection (YOLO)
     player_analysis_fps: float = 2.5
     player_detect_imgsz: int = 1280

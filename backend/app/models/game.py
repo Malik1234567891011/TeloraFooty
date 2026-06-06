@@ -16,7 +16,10 @@ class Game(BaseModel):
     video_filename: str | None = None
     team_name: str = "Our Team"
     opponent_name: str | None = None
-    status: str = "uploaded"  # uploaded | processing | completed | failed
+    status: str = "uploaded"  # uploaded | downloading | processing | completed | failed
+    error: str | None = None
+    source_kind: str = "local"  # local | drive
+    source_url: str | None = None
     duration_seconds: float = 0.0
     event_count: int = 0
     created_at: datetime = Field(default_factory=_now)
