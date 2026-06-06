@@ -55,6 +55,22 @@ class Settings(BaseSettings):
     enable_vlm: bool = True
     gemini_api_key: str = ""
     vlm_model: str = "gemini-2.5-flash"
+    # Stronger model used in the precision-verification stage of the full-match
+    # funnel (Tier-1 billing; cost acceptable for far fewer, higher-stakes calls).
+    vlm_verify_model: str = "gemini-2.5-pro"
+    # Context window (seconds) sent to the verifier around each candidate moment.
+    verify_window_pre: float = 14.0
+    verify_window_post: float = 12.0
+    # A candidate survives verification only at/above this confidence.
+    verify_threshold: float = 0.6
+
+    # Aftermath/play-restart verification (approach B): ask about the CONSEQUENCE
+    # of a candidate (keeper possession, goal kick, corner, goal+kickoff) rather
+    # than trying to see the ball. Window leans heavily on the seconds AFTER.
+    vlm_aftermath_model: str = "gemini-2.5-flash"
+    aftermath_pre: float = 6.0
+    aftermath_post: float = 18.0
+    aftermath_threshold: float = 0.6
     vlm_window_size: float = 8.0
     vlm_stride: float = 6.0
     vlm_max_windows: int = 12

@@ -35,10 +35,9 @@ backend/storage/annotations/*.tmp
 backend/app/data/*.json
 !backend/app/data/.gitkeep
 
-# Large sample/test videos sitting at repo root (do NOT commit large videos)
-/*.mp4
-g17cunetestingfilmmidland.mp4
-mountmartytestingfilm.mp4
+# Large sample/test videos (do NOT commit large videos)
+*.mp4
+/clips/
 
 # Logs
 *.log
