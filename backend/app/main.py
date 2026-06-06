@@ -70,6 +70,7 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(videos.router, prefix="/api/videos", tags=["videos"])
 app.include_router(imports.router, prefix="/api/games", tags=["imports"])
+app.include_router(imports.drive_router, prefix="/api/drive", tags=["imports"])
 app.include_router(games.router, prefix="/api/games", tags=["games"])
 app.include_router(events.router, prefix="/api/games", tags=["events"])
 app.include_router(media.router, prefix="/api/games", tags=["media"])

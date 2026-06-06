@@ -149,6 +149,33 @@ def public_url_for_upload(stored_filename: str) -> str:
     return f"/media/uploads/{stored_filename}"
 
 
+def register_local_file(
+    src_path: str | Path, *, original_name: str | None = None,
+    video_type: str = "full_game", prefix: str = "drive",
+) -> Video:
+    """Move an already-downloaded local file into uploads and record a Video."""
+    src = Path(src_path)
+    if not src.exists():
+        raise InvalidVideoError(f"Source file not found: {src}", code="VIDEO_NOT_FOUND")
+    settings.ensure_dirs()
+    stored_filename = safe_video_filename(prefix=prefix)
+    dest = settings.uploads_dir / stored_filename
+    shutil.move(str(src), dest)
+    meta = get_video_metadata(dest)
+    video = Video(
+        id=new_id("vid"),
+        original_filename=original_name or src.name,
+        stored_filename=stored_filename,
+        stored_path=str(dest),
+        video_type=video_type,
+        duration_seconds=meta.duration_seconds,
+        fps=meta.fps,
+        width=meta.width,
+        height=meta.height,
+    )
+    return store.save_video(video)
+
+
 def _video_codec(path: Path) -> str:
     out = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "v:0",
