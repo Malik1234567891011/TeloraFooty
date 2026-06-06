@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from app.schemas.clip_schema import ClipOut, GameClipsResponse
 from app.schemas.frontend_api import game_out
 from app.schemas.game_schema import ProcessGameResponse
-from app.services import job_service, media_service, processing_service
+from app.services import job_service, match_processing_service, media_service
 from app.services.store import store
 
 router = APIRouter()
@@ -54,17 +54,17 @@ def delete_game(game_id: str) -> dict:
 
 @router.post("/{game_id}/process", response_model=ProcessGameResponse)
 def process_game(game_id: str, background_tasks: BackgroundTasks) -> ProcessGameResponse:
-    """Start full-game processing (loads manual annotations, generates clips)."""
+    """Re-run shot/goal detection for a game (manual + verified events survive)."""
     _require_game(game_id)
 
-    job = job_service.create_job("full_game", game_id=game_id, message="Full game processing queued.")
-    background_tasks.add_task(processing_service.process_game_from_annotations, game_id, job.id)
+    job = job_service.create_job("full_game", game_id=game_id, message="Auto-analysis queued.")
+    background_tasks.add_task(match_processing_service.process_game, game_id, job.id)
 
     return ProcessGameResponse(
         job_id=job.id,
         game_id=game_id,
         status="processing",
-        message="Full game processing started. Results will be available shortly.",
+        message="Detection started. Results will be available shortly.",
     )
 
 

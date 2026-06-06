@@ -7,6 +7,7 @@ a Video in the store. Never trusts the original filename.
 from __future__ import annotations
 
 import shutil
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -146,3 +147,48 @@ def save_path_as_upload(src_path: str | Path, video_type: str = "full_game", pre
 
 def public_url_for_upload(stored_filename: str) -> str:
     return f"/media/uploads/{stored_filename}"
+
+
+def _video_codec(path: Path) -> str:
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=codec_name", "-of", "csv=p=0", str(path)],
+        capture_output=True, text=True, timeout=60,
+    )
+    return out.stdout.strip()
+
+
+def ensure_h264(video: Video) -> Video:
+    """Re-encode in place when the codec isn't browser-playable (HEVC handling).
+
+    Refreshes the stored metadata after conversion. Codec probe failures are
+    non-fatal (detection can still run); conversion failures raise.
+    """
+    from app.core.errors import ProcessingError
+
+    path = Path(video.stored_path)
+    try:
+        codec = _video_codec(path)
+    except (subprocess.SubprocessError, OSError) as exc:
+        logger.warning("Codec probe failed for %s (%s); leaving as-is.", path.name, exc)
+        return video
+    if codec == "h264" or not codec:
+        return video
+    logger.info("Re-encoding %s (%s -> h264).", path.name, codec)
+    tmp = path.with_suffix(".h264.mp4")
+    res = subprocess.run(
+        ["ffmpeg", "-i", str(path), "-c:v", "libx264", "-preset", "fast",
+         "-c:a", "aac", "-movflags", "+faststart", "-y", str(tmp)],
+        capture_output=True, text=True, timeout=3600,
+    )
+    if res.returncode != 0 or not tmp.exists():
+        tmp.unlink(missing_ok=True)
+        raise ProcessingError("Could not convert video to a playable format.",
+                              code="CONVERSION_FAILED")
+    tmp.replace(path)
+    meta = get_video_metadata(path)
+    video.duration_seconds = meta.duration_seconds
+    video.fps = meta.fps
+    video.width = meta.width
+    video.height = meta.height
+    return store.save_video(video)
