@@ -107,6 +107,10 @@ class JsonStore:
     def get_job(self, job_id: str) -> Job | None:
         return self.jobs.get(job_id)
 
+    def latest_job_for_game(self, game_id: str) -> Job | None:
+        jobs = [j for j in self.jobs.values() if j.game_id == game_id]
+        return max(jobs, key=lambda j: j.created_at) if jobs else None
+
     def list_games(self) -> list[Game]:
         return sorted(self.games.values(), key=lambda g: g.created_at)
 

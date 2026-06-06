@@ -39,3 +39,18 @@ def test_delete_game_cascades():
     assert s.events_for_game("g1") == []
     assert s.clips_for_game("g1") == []
     assert s.delete_game("g1") is False
+
+
+def test_latest_job_for_game():
+    from datetime import datetime, timezone
+    from app.models import Job
+    s = _store()
+    assert s.latest_job_for_game("g1") is None
+    old = Job(id="j1", job_type="full_game", game_id="g1",
+              created_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
+    new = Job(id="j2", job_type="full_game", game_id="g1",
+              created_at=datetime(2026, 6, 1, tzinfo=timezone.utc))
+    s.save_job(old)
+    s.save_job(new)
+    s.save_job(Job(id="j3", job_type="full_game", game_id="other"))
+    assert s.latest_job_for_game("g1").id == "j2"
