@@ -67,20 +67,32 @@ export default function Player() {
 
   async function deleteEvent(ev: GameEvent) {
     if (!window.confirm(`Delete this ${ev.type}?`)) return
-    await api.deleteEvent(gameId, ev.id)
-    if (selected?.id === ev.id) setSelected(null)
-    await refreshEvents()
+    try {
+      await api.deleteEvent(gameId, ev.id)
+      if (selected?.id === ev.id) setSelected(null)
+      await refreshEvents()
+    } catch (e) {
+      setError((e as Error).message)
+    }
   }
 
   async function switchType(ev: GameEvent) {
-    await api.patchEvent(gameId, ev.id, { type: ev.type === 'goal' ? 'shot' : 'goal' })
-    await refreshEvents()
+    try {
+      await api.patchEvent(gameId, ev.id, { type: ev.type === 'goal' ? 'shot' : 'goal' })
+      await refreshEvents()
+    } catch (e) {
+      setError((e as Error).message)
+    }
   }
 
   async function setTimeToPlayhead(ev: GameEvent) {
     const t = videoRef.current?.currentTime ?? ev.timestamp
-    await api.patchEvent(gameId, ev.id, { timestamp: t })
-    await refreshEvents()
+    try {
+      await api.patchEvent(gameId, ev.id, { timestamp: t })
+      await refreshEvents()
+    } catch (e) {
+      setError((e as Error).message)
+    }
   }
 
   async function exportEvent(ev: GameEvent) {
@@ -90,7 +102,7 @@ export default function Player() {
       a.href = URL.createObjectURL(blob)
       a.download = `${game!.title.replaceAll(' ', '_')}_${ev.type}_${fmtTime(ev.timestamp).replace(':', '')}.mp4`
       a.click()
-      URL.revokeObjectURL(a.href)
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000)
     } catch (e) {
       setError((e as Error).message)
     }
