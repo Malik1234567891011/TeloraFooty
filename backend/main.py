@@ -1,4 +1,5 @@
 import shutil
+import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, UploadFile
@@ -53,11 +54,14 @@ async def import_file(file: UploadFile):
     name = Path(file.filename or "video.mp4")
     if name.suffix.lower() not in importer.VIDEO_EXTS:
         raise HTTPException(400, f"Unsupported file type: {name.suffix}")
-    tmp = store.games_root() / f"upload_{name.name}"
-    with tmp.open("wb") as out:
-        while chunk := await file.read(1 << 20):
-            out.write(chunk)
-    return importer.import_local(tmp, name.stem)
+    tmp = store.games_root() / f"upload_{uuid.uuid4().hex[:8]}_{name.name}"
+    try:
+        with tmp.open("wb") as out:
+            while chunk := await file.read(1 << 20):
+                out.write(chunk)
+        return importer.import_local(tmp, name.stem)
+    finally:
+        tmp.unlink(missing_ok=True)  # no-op when import_local's move consumed it
 
 
 @app.post("/api/drive/list")

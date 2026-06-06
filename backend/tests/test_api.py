@@ -64,3 +64,7 @@ def test_video_streaming_supports_range(ready_game):
 def test_delete_game(ready_game):
     assert client.delete(f"/api/games/{ready_game['id']}").status_code == 200
     assert client.get(f"/api/games/{ready_game['id']}").status_code == 404
+
+
+def test_delete_missing_game_404(data_dir):
+    assert client.delete("/api/games/game_nope").status_code == 404
