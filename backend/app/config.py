@@ -7,6 +7,7 @@ working directory it is launched from.
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -151,6 +152,15 @@ class Settings(BaseSettings):
 
     @property
     def data_dir(self) -> Path:
+        """JSON store directory (games/events/videos/clips/jobs).
+
+        Honors ``TELORA_DATA_DIR`` so tests can isolate the store from the real
+        data — without this, the JSON store ignored ``STORAGE_DIR`` and tests
+        mutated production data. Defaults to ``backend/app/data``.
+        """
+        override = os.environ.get("TELORA_DATA_DIR")
+        if override:
+            return Path(override)
         return BACKEND_DIR / "app" / "data"
 
     @property

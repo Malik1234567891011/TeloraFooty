@@ -19,6 +19,9 @@ import pytest
 # Configure environment before any app module is imported.
 _TMP_STORAGE = tempfile.mkdtemp(prefix="telora_test_storage_")
 os.environ["STORAGE_DIR"] = _TMP_STORAGE
+# Isolate the JSON store too — it lives under app/data and ignores STORAGE_DIR,
+# so without this, tests' store mutations would wipe real games/events.
+os.environ["TELORA_DATA_DIR"] = tempfile.mkdtemp(prefix="telora_test_data_")
 os.environ["ENABLE_SEED"] = "false"
 os.environ["ENABLE_ML_DETECTORS"] = "false"
 # Tests must stay hermetic: never call the live Gemini API, even when the
