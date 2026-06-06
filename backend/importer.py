@@ -42,8 +42,9 @@ def list_drive_folder(url: str) -> list[dict]:
     kind, drive_id = parse_drive_url(url)
     if kind != "folder":
         raise ValueError("Not a folder link")
-    files = gdown.download_folder(id=drive_id, skip_download=True, quiet=True)
-    if files is None:
+    try:
+        files = gdown.download_folder(id=drive_id, skip_download=True, quiet=True)
+    except gdown.exceptions.DownloadError:
         raise RuntimeError(NOT_PUBLIC_MSG)
     return [
         {"id": f.id, "name": Path(f.path).name}
@@ -85,9 +86,9 @@ def _fail(game_id: str, message: str) -> None:
 def import_local(src: Path, title: str) -> dict:
     """Synchronous local import: move file into library, then finalize."""
     game = store.new_game(title, {"kind": "local", "url": None})
-    dest = store.game_dir(game["id"]) / "video.mp4"
-    shutil.move(str(src), dest)
     try:
+        dest = store.game_dir(game["id"]) / "video.mp4"
+        shutil.move(str(src), dest)
         finalize_game(game["id"])
     except Exception as exc:
         _fail(game["id"], str(exc))
@@ -101,8 +102,9 @@ def _import_drive_file(url: str, drive_id: str, name: str) -> dict:
     def work() -> None:
         try:
             dest = store.game_dir(game["id"]) / "video.mp4"
-            out = gdown.download(id=drive_id, output=str(dest), quiet=True)
-            if out is None:
+            try:
+                gdown.download(id=drive_id, output=str(dest), quiet=True)
+            except gdown.exceptions.DownloadError:
                 raise RuntimeError(NOT_PUBLIC_MSG)
             finalize_game(game["id"])
         except Exception as exc:

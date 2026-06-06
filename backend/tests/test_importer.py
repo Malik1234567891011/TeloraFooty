@@ -49,3 +49,20 @@ def test_import_local_bad_file_sets_error(data_dir, tmp_path):
     assert game["status"] == "error"
     assert game["error"]
     assert not (store.game_dir(game["id"]) / "video.mp4").exists()  # partial cleaned up
+
+
+def test_list_drive_folder_not_public_message(monkeypatch):
+    import gdown
+
+    def boom(**kwargs):
+        raise gdown.exceptions.DownloadError("Cannot retrieve the folder information")
+
+    monkeypatch.setattr(gdown, "download_folder", boom)
+    with pytest.raises(RuntimeError, match="anyone with the link"):
+        importer.list_drive_folder("https://drive.google.com/drive/folders/abc123")
+
+
+def test_import_local_missing_source_sets_error(data_dir, tmp_path):
+    game = importer.import_local(tmp_path / "nonexistent.mp4", "Gone")
+    assert game["status"] == "error"
+    assert game["error"]
