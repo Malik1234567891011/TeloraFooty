@@ -9,9 +9,16 @@ export default function Library() {
   const [uploading, setUploading] = useState(false)
   const [drivePick, setDrivePick] = useState<{ url: string; files: DriveFile[] } | null>(null)
   const [checked, setChecked] = useState<Set<string>>(new Set())
+  const [driveImporting, setDriveImporting] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const refresh = () => api.listGames().then(setGames).catch((e: Error) => setError(e.message))
+  const refresh = () =>
+    api.listGames()
+      .then((gs) => {
+        setGames(gs)
+        setError(null)
+      })
+      .catch((e: Error) => setError(e.message))
 
   useEffect(() => {
     refresh()
@@ -58,20 +65,27 @@ export default function Library() {
   }
 
   async function confirmDrivePick() {
-    if (!drivePick) return
+    if (!drivePick || driveImporting) return
+    setDriveImporting(true)
     try {
       await api.importDrive(drivePick.url, [...checked])
       setDrivePick(null)
       await refresh()
     } catch (err) {
       setError((err as Error).message)
+    } finally {
+      setDriveImporting(false)
     }
   }
 
   async function onDelete(game: Game) {
     if (!window.confirm(`Delete "${game.title}"?`)) return
-    await api.deleteGame(game.id)
-    await refresh()
+    try {
+      await api.deleteGame(game.id)
+      await refresh()
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
 
   return (
@@ -140,8 +154,8 @@ export default function Library() {
             ))}
             <div className="actions">
               <button className="btn" onClick={() => setDrivePick(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={confirmDrivePick} disabled={checked.size === 0}>
-                Import {checked.size} video{checked.size === 1 ? '' : 's'}
+              <button className="btn btn-primary" onClick={confirmDrivePick} disabled={driveImporting || checked.size === 0}>
+                {driveImporting ? 'Importing…' : `Import ${checked.size} video${checked.size === 1 ? '' : 's'}`}
               </button>
             </div>
           </div>
