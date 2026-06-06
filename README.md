@@ -29,6 +29,24 @@ Open http://localhost:5173
     cd backend && .venv/bin/pytest
     cd frontend && npm test
 
+## Keyboard shortcuts (player)
+
+| Key | Action |
+|---|---|
+| `Space` / `K` | Play / pause |
+| `←` / `→` | Back / forward 5s |
+| `H` | Tag a shot at the playhead (Veo's clip key) |
+| `G` | Tag a goal at the playhead |
+| `N` / `P` | Next / previous event |
+| `+` / `-` | Playback speed up / down (0.5x–4x) |
+| `F` | Fullscreen |
+
+## Rating calls
+
+Each event card has ✓ (correct call — stores `verified: true`, shown on the
+card) and ✗ (bad call — removes the event instantly). Verified flags will be
+used to judge the future AI detector's accuracy.
+
 ## Notes
 
 - Library data lives in `data/games/` (gitignored).
