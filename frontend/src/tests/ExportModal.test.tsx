@@ -31,12 +31,18 @@ function setup() {
 
 test('shows the clip preview and a download link with the right filename', () => {
   setup()
-  const video = document.querySelector('video.clip-preview')!
+  const video = document.querySelector('.export-modal .clip-player video')!
   expect(video).toBeInTheDocument()
   expect(video.getAttribute('src')).toBe('/api/games/g1/events/e1/clip.mp4')
   const link = screen.getByText('⤓ Download').closest('a')!
   expect(link.getAttribute('href')).toBe('/api/games/g1/events/e1/clip.mp4')
   expect(link.getAttribute('download')).toBe('Test_Game_goal_140.mp4')
+})
+
+test('escape closes the popup', () => {
+  const { onClose } = setup()
+  fireEvent.keyDown(window, { key: 'Escape' })
+  expect(onClose).toHaveBeenCalled()
 })
 
 test('send button stays disabled until a valid email is typed', () => {

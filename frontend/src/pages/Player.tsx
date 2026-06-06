@@ -151,6 +151,7 @@ export default function Player() {
           onTimeUpdate={onTimeUpdate}
           onSelectEvent={selectEvent}
           onTag={tagEvent}
+          shortcutsEnabled={!exporting}
         />
         <ClipsPanel
           gameId={gameId}

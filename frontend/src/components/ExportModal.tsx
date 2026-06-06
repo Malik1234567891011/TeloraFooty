@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { fmtTime } from '../playback'
 import type { Game, GameEvent } from '../types'
+import ClipPlayer from './ClipPlayer'
 
 interface Props {
   game: Game
@@ -17,6 +18,14 @@ export default function ExportModal({ game, event, onClose }: Props) {
   const clipUrl = api.clipUrl(game.id, event.id)
   const filename = `${game.title.replaceAll(' ', '_')}_${event.type}_${fmtTime(event.timestamp).replace(':', '')}.mp4`
   const validEmail = /\S+@\S+\.\S+/.test(email)
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   async function send() {
     if (!validEmail || status === 'sending') return
@@ -37,7 +46,7 @@ export default function ExportModal({ game, event, onClose }: Props) {
         <h3>{title} · {fmtTime(event.timestamp)}</h3>
         <p className="modal-hint">{game.title} — 30s before → 10s after</p>
 
-        <video className="clip-preview" src={clipUrl} controls autoPlay muted />
+        <ClipPlayer src={clipUrl} />
 
         <div className="export-row">
           <a className="btn btn-primary" href={clipUrl} download={filename}>⤓ Download</a>

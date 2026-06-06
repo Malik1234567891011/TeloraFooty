@@ -15,10 +15,12 @@ interface Props {
   onTimeUpdate: (time: number) => void
   onSelectEvent: (event: GameEvent) => void
   onTag: (type: EventType) => void
+  shortcutsEnabled?: boolean
 }
 
 export default function VideoPlayer({
   gameId, duration, events, mode, selected, videoRef, onTimeUpdate, onSelectEvent, onTag,
+  shortcutsEnabled = true,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const hideTimer = useRef<number | null>(null)
@@ -100,6 +102,7 @@ export default function VideoPlayer({
   // +/- = speed, Space/K = play/pause, arrows = ±5s, N/P = next/prev event, F = fullscreen.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (!shortcutsEnabled) return // e.g. while the export popup is open
       const target = e.target as HTMLElement
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
