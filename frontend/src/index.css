@@ -428,3 +428,28 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
     transition-duration: 0.01ms !important;
   }
 }
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 80%;
+  padding: 0 12px;
+}
+.progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent, #4f8cff);
+  transition: width 0.4s ease;
+}
+.progress-label {
+  font-size: 12px;
+  color: var(--muted, #9aa);
+  text-align: center;
+}
