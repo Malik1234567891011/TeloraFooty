@@ -25,6 +25,8 @@ export const api = {
   getGame: (id: string) => fetch(`/api/games/${id}`).then((r) => asJson<Game>(r)),
   deleteGame: (id: string) =>
     fetch(`/api/games/${id}`, { method: 'DELETE' }).then((r) => asJson<{ ok: boolean }>(r)),
+  retryAnalysis: (id: string) =>
+    fetch(`/api/games/${id}/process`, { method: 'POST' }).then((r) => asJson<{ job_id: string }>(r)),
   importFile: (file: File) => {
     const form = new FormData()
     form.append('file', file)

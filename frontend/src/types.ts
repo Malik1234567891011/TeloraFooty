@@ -16,8 +16,10 @@ export interface Game {
   date: string
   durationSec: number
   source: { kind: 'local' | 'drive'; url: string | null }
-  status: 'downloading' | 'processing' | 'ready' | 'error'
+  status: 'downloading' | 'processing' | 'ready' | 'error' | 'interrupted'
   error: string | null
+  progress?: number
+  progressMessage?: string | null
   goals?: number // present on GET /api/games
   shots?: number
 }
