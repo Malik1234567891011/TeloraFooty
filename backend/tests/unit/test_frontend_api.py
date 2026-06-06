@@ -42,3 +42,14 @@ def test_event_out_maps_source_and_window():
     assert out.clipStart < 50.0 < out.clipEnd
     assert event_out(Event(id="e2", event_type="shot", timestamp_seconds=1.0,
                            source="manual"), 100.0).source == "manual"
+
+
+def test_game_out_progress_and_interrupted():
+    g = game_out(_game(status="processing"), progress=42, progress_message="Scanning 4/8 windows")
+    assert g.progress == 42
+    assert g.progressMessage == "Scanning 4/8 windows"
+    # Default: no progress fields supplied.
+    assert game_out(_game(status="ready")).progress is None
+    assert game_out(_game(status="ready")).progressMessage is None
+    # Interrupted maps through to the frontend vocabulary.
+    assert game_out(_game(status="interrupted")).status == "interrupted"
