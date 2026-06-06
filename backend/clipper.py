@@ -13,7 +13,10 @@ def _run(args: list[str]) -> str:
 def probe_duration(video: Path) -> float:
     out = _run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
                 "-of", "csv=p=0", str(video)])
-    return float(out.strip())
+    try:
+        return float(out.strip())
+    except ValueError:
+        raise RuntimeError(f"could not read duration from {video}")
 
 
 def video_codec(video: Path) -> str:
@@ -44,6 +47,10 @@ def ensure_h264(video: Path) -> None:
     if video_codec(video) == "h264":
         return
     tmp = video.with_suffix(".h264.mp4")
-    _run(["ffmpeg", "-i", str(video), "-c:v", "libx264", "-preset", "fast",
-          "-c:a", "aac", "-movflags", "+faststart", "-y", str(tmp)])
+    try:
+        _run(["ffmpeg", "-i", str(video), "-c:v", "libx264", "-preset", "fast",
+              "-c:a", "aac", "-movflags", "+faststart", "-y", str(tmp)])
+    except RuntimeError:
+        tmp.unlink(missing_ok=True)
+        raise
     tmp.replace(video)

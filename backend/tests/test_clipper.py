@@ -1,3 +1,5 @@
+import subprocess
+
 import pytest
 
 import clipper
@@ -28,3 +30,16 @@ def test_export_clip_failure_cleans_up(tmp_path):
     with pytest.raises(RuntimeError):
         clipper.export_clip(tmp_path / "missing.mp4", 0.0, 1.0, out)
     assert not out.exists()
+
+
+def test_ensure_h264_transcodes_non_h264(tmp_path):
+    src = tmp_path / "old_codec.mp4"
+    subprocess.run(
+        ["ffmpeg", "-f", "lavfi", "-i", "testsrc=duration=2:size=320x240:rate=24",
+         "-c:v", "mpeg4", "-y", str(src)],
+        check=True, capture_output=True,
+    )
+    assert clipper.video_codec(src) == "mpeg4"
+    clipper.ensure_h264(src)
+    assert clipper.video_codec(src) == "h264"
+    assert not src.with_suffix(".h264.mp4").exists()  # no temp left behind
