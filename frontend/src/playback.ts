@@ -24,6 +24,20 @@ export function startTime(mode: Mode, event: GameEvent): number {
 }
 
 /**
+ * The time window the player UI should present. In clip mode with a selected
+ * event, the player behaves like a standalone clip (timeline spans only the
+ * clip); otherwise it spans the whole video.
+ */
+export function clipWindow(
+  mode: Mode,
+  selected: GameEvent | null,
+  duration: number,
+): { start: number; end: number } {
+  if (mode === 'clip' && selected) return { start: selected.clipStart, end: selected.clipEnd }
+  return { start: 0, end: duration }
+}
+
+/**
  * Next (dir=1) or previous (dir=-1) event.
  *
  * With a selected event, navigation follows event order — the playhead can sit

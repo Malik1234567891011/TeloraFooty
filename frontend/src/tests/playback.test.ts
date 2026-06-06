@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { clipEnded, filterEvents, fmtTime, nextEvent, sortEvents, startTime } from '../playback'
+import { clipEnded, clipWindow, filterEvents, fmtTime, nextEvent, sortEvents, startTime } from '../playback'
 import type { GameEvent } from '../types'
 
 const ev = (id: string, type: 'shot' | 'goal', timestamp: number): GameEvent => ({
@@ -70,6 +70,19 @@ describe('nextEvent with a selection (event-order based)', () => {
     const first = events.find((e) => e.id === 'e1')!
     expect(nextEvent(events, last, 270, 1)).toBeNull()
     expect(nextEvent(events, first, 70, -1)).toBeNull()
+  })
+})
+
+describe('clipWindow', () => {
+  const e = ev('x', 'goal', 1200) // clip 1170 → 1210
+  test('clip mode with a selection scopes the player to the clip', () => {
+    expect(clipWindow('clip', e, 7200)).toEqual({ start: 1170, end: 1210 })
+  })
+  test('full mode spans the whole video', () => {
+    expect(clipWindow('full', e, 7200)).toEqual({ start: 0, end: 7200 })
+  })
+  test('clip mode without a selection spans the whole video', () => {
+    expect(clipWindow('clip', null, 7200)).toEqual({ start: 0, end: 7200 })
   })
 })
 

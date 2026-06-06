@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
-import { fmtTime, nextEvent, type Mode } from '../playback'
+import { clipWindow, fmtTime, nextEvent, type Mode } from '../playback'
 import type { EventType, GameEvent } from '../types'
 
 const SPEEDS = [0.5, 1, 1.5, 2, 4]
@@ -34,9 +34,15 @@ export default function VideoPlayer({
     else v.pause()
   }
 
+  // In clip mode with a selection, the player presents only the clip's window:
+  // the timeline spans clipStart→clipEnd, time reads 0:00/0:40, seeks stay inside.
+  const win = clipWindow(mode, selected, duration)
+  const winLen = win.end - win.start
+  const relTime = Math.min(Math.max(time - win.start, 0), winLen)
+
   function skip(delta: number) {
     const v = video()
-    if (v) v.currentTime = Math.max(0, Math.min(duration, v.currentTime + delta))
+    if (v) v.currentTime = Math.max(win.start, Math.min(win.end, v.currentTime + delta))
   }
 
   function jumpEvent(dir: 1 | -1) {
@@ -46,10 +52,10 @@ export default function VideoPlayer({
 
   function onScrub(e: React.MouseEvent<HTMLDivElement>) {
     const v = video()
-    if (!v || duration === 0) return
+    if (!v || winLen === 0) return
     const rect = e.currentTarget.getBoundingClientRect()
     const frac = (e.clientX - rect.left) / rect.width
-    v.currentTime = Math.max(0, Math.min(duration, frac * duration))
+    v.currentTime = Math.max(win.start, Math.min(win.end, win.start + frac * winLen))
   }
 
   function changeSpeed(value: number) {
@@ -144,12 +150,12 @@ export default function VideoPlayer({
 
         <div className="timeline" onClick={onScrub}>
           <div className="track">
-            <div className="fill" style={{ width: duration ? `${(time / duration) * 100}%` : '0%' }} />
-            {events.map((ev) => (
+            <div className="fill" style={{ width: winLen ? `${(relTime / winLen) * 100}%` : '0%' }} />
+            {(mode === 'clip' && selected ? [selected] : events).map((ev) => (
               <span
                 key={ev.id}
                 className={`dot ${ev.type}${selected?.id === ev.id ? ' selected' : ''}`}
-                style={{ left: duration ? `${(ev.timestamp / duration) * 100}%` : '0%' }}
+                style={{ left: winLen ? `${((ev.timestamp - win.start) / winLen) * 100}%` : '0%' }}
                 title={`${ev.type} ${fmtTime(ev.timestamp)}`}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -160,7 +166,7 @@ export default function VideoPlayer({
           </div>
         </div>
 
-        <span className="time">{fmtTime(time)} / {fmtTime(duration)}</span>
+        <span className="time">{fmtTime(relTime)} / {fmtTime(winLen)}</span>
         <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} title="Speed (+/-)">
           {SPEEDS.map((s) => <option key={s} value={s}>{s}x</option>)}
         </select>
