@@ -26,6 +26,13 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     settings.ensure_dirs()
     logger.info("Storage ready at %s", settings.storage_path)
+    # Recover analyses orphaned by a previous restart.
+    try:
+        from app.services.recovery_service import recover_orphaned_jobs
+
+        recover_orphaned_jobs()
+    except Exception as exc:  # recovery must never block startup
+        logger.warning("Orphan recovery skipped: %s", exc)
     # Seed demo games on first boot if none exist.
     if settings.enable_seed:
         try:
