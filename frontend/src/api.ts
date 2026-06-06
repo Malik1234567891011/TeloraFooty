@@ -3,7 +3,12 @@ import type { DriveFile, EventType, Game, GameEvent } from './types'
 async function asJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => null)
-    throw new Error(body?.detail ?? `Request failed (${res.status})`)
+    const detail = body?.detail
+    throw new Error(
+      Array.isArray(detail)
+        ? detail.map((d: { msg: string }) => d.msg).join('; ')
+        : (detail ?? `Request failed (${res.status})`),
+    )
   }
   return res.json()
 }
