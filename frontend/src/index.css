@@ -453,3 +453,14 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
   color: var(--muted, #9aa);
   text-align: center;
 }
+
+.thumb-state {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+.btn-small {
+  padding: 4px 12px;
+  font-size: 13px;
+}

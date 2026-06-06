@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import ProgressBar from '../components/ProgressBar'
 import type { DriveFile, Game } from '../types'
 
 type DriveStep =
@@ -111,6 +112,15 @@ export default function Library() {
     }
   }
 
+  async function onRetry(game: Game) {
+    try {
+      await api.retryAnalysis(game.id)
+      await refresh()
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
   return (
     <div className="page">
       <div className="page-head">
@@ -139,10 +149,16 @@ export default function Library() {
               </Link>
             ) : (
               <div className="thumb">
-                {g.status === 'error' ? (
-                  <span className="status-error">⚠ {g.error ?? 'Import failed'}</span>
+                {g.status === 'error' || g.status === 'interrupted' ? (
+                  <div className="thumb-state">
+                    <span className="status-error">⚠ {g.error ?? 'Analysis failed'}</span>
+                    <button className="btn btn-small" onClick={() => onRetry(g)}>Retry</button>
+                  </div>
                 ) : (
-                  <span>{g.status === 'downloading' ? 'Downloading…' : 'Processing…'}</span>
+                  <ProgressBar
+                    value={g.progress ?? 0}
+                    label={g.progressMessage ?? (g.status === 'downloading' ? 'Downloading…' : 'Processing…')}
+                  />
                 )}
               </div>
             )}
