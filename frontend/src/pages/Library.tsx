@@ -3,11 +3,18 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import type { DriveFile, Game } from '../types'
 
+type DriveStep =
+  | { step: 'url' }
+  | { step: 'loading' }
+  | { step: 'pick'; url: string; files: DriveFile[] }
+
 export default function Library() {
   const [games, setGames] = useState<Game[]>([])
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [drivePick, setDrivePick] = useState<{ url: string; files: DriveFile[] } | null>(null)
+  const [drive, setDrive] = useState<DriveStep | null>(null)
+  const [driveUrl, setDriveUrl] = useState('')
+  const [driveError, setDriveError] = useState<string | null>(null)
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [driveImporting, setDriveImporting] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -42,37 +49,53 @@ export default function Library() {
     }
   }
 
-  async function onDrive() {
-    const url = window.prompt('Paste a public Google Drive file or folder link:')
-    if (!url) return
-    setError(null)
+  function openDrive() {
+    setDriveUrl('')
+    setDriveError(null)
+    setDrive({ step: 'url' })
+  }
+
+  function closeDrive() {
+    setDrive(null)
+    setDriveError(null)
+  }
+
+  async function submitDriveUrl() {
+    const url = driveUrl.trim()
+    if (!url || drive?.step === 'loading') return
+    setDriveError(null)
     try {
       if (url.includes('/folders/')) {
+        setDrive({ step: 'loading' })
         const files = await api.listDriveFolder(url)
         if (files.length === 0) {
-          setError('No videos found in that folder')
+          setDriveError('No videos found in that folder.')
+          setDrive({ step: 'url' })
           return
         }
         setChecked(new Set(files.map((f) => f.id)))
-        setDrivePick({ url, files })
+        setDrive({ step: 'pick', url, files })
       } else {
+        setDrive({ step: 'loading' })
         await api.importDrive(url)
+        closeDrive()
         await refresh()
       }
     } catch (err) {
-      setError((err as Error).message)
+      setDriveError((err as Error).message)
+      setDrive({ step: 'url' })
     }
   }
 
   async function confirmDrivePick() {
-    if (!drivePick || driveImporting) return
+    if (drive?.step !== 'pick' || driveImporting) return
     setDriveImporting(true)
     try {
-      await api.importDrive(drivePick.url, [...checked])
-      setDrivePick(null)
+      await api.importDrive(drive.url, [...checked])
+      closeDrive()
       await refresh()
     } catch (err) {
-      setError((err as Error).message)
+      setDriveError((err as Error).message)
     } finally {
       setDriveImporting(false)
     }
@@ -99,7 +122,7 @@ export default function Library() {
         <button className="btn" onClick={() => fileInput.current?.click()} disabled={uploading}>
           {uploading ? 'Uploading…' : 'Import video'}
         </button>
-        <button className="btn btn-primary" onClick={onDrive}>Import from Drive</button>
+        <button className="btn btn-primary" onClick={openDrive}>Import from Drive</button>
         <input ref={fileInput} type="file" accept=".mp4,.mov,.mkv" hidden onChange={onFile} />
       </div>
 
@@ -135,31 +158,74 @@ export default function Library() {
         {games.length === 0 && <p style={{ color: 'var(--muted)' }}>No games yet — import one to get started.</p>}
       </div>
 
-      {drivePick && (
-        <div className="modal-backdrop" onClick={() => setDrivePick(null)}>
+      {drive && (
+        <div className="modal-backdrop" onClick={closeDrive}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Choose videos to import</h3>
-            {drivePick.files.map((f) => (
-              <label key={f.id}>
+            {drive.step === 'url' && (
+              <>
+                <h3>Import from Google Drive</h3>
+                <p className="modal-hint">
+                  Paste a file or folder link shared as <strong>"anyone with the link"</strong>.
+                </p>
                 <input
-                  type="checkbox"
-                  checked={checked.has(f.id)}
-                  onChange={(e) => {
-                    const next = new Set(checked)
-                    if (e.target.checked) next.add(f.id)
-                    else next.delete(f.id)
-                    setChecked(next)
+                  className="modal-input"
+                  type="text"
+                  placeholder="https://drive.google.com/…"
+                  value={driveUrl}
+                  autoFocus
+                  onChange={(e) => setDriveUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') submitDriveUrl()
                   }}
-                />{' '}
-                {f.name}
-              </label>
-            ))}
-            <div className="actions">
-              <button className="btn" onClick={() => setDrivePick(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={confirmDrivePick} disabled={driveImporting || checked.size === 0}>
-                {driveImporting ? 'Importing…' : `Import ${checked.size} video${checked.size === 1 ? '' : 's'}`}
-              </button>
-            </div>
+                />
+                {driveError && <p className="modal-error">{driveError}</p>}
+                <div className="actions">
+                  <button className="btn" onClick={closeDrive}>Cancel</button>
+                  <button className="btn btn-primary" onClick={submitDriveUrl} disabled={!driveUrl.trim()}>
+                    Continue
+                  </button>
+                </div>
+              </>
+            )}
+
+            {drive.step === 'loading' && (
+              <div className="modal-loading">
+                <span className="spinner" />
+                <p>Looking in your Drive…</p>
+              </div>
+            )}
+
+            {drive.step === 'pick' && (
+              <>
+                <h3>Choose videos to import</h3>
+                {drive.files.map((f) => (
+                  <label key={f.id}>
+                    <input
+                      type="checkbox"
+                      checked={checked.has(f.id)}
+                      onChange={(e) => {
+                        const next = new Set(checked)
+                        if (e.target.checked) next.add(f.id)
+                        else next.delete(f.id)
+                        setChecked(next)
+                      }}
+                    />{' '}
+                    {f.name}
+                  </label>
+                ))}
+                {driveError && <p className="modal-error">{driveError}</p>}
+                <div className="actions">
+                  <button className="btn" onClick={closeDrive}>Cancel</button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={confirmDrivePick}
+                    disabled={driveImporting || checked.size === 0}
+                  >
+                    {driveImporting ? 'Importing…' : `Import ${checked.size} video${checked.size === 1 ? '' : 's'}`}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

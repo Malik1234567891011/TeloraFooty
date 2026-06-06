@@ -26,6 +26,7 @@ export default function VideoPlayer({
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [controlsVisible, setControlsVisible] = useState(true)
+  const [speedOpen, setSpeedOpen] = useState(false)
   const [burst, setBurst] = useState<{ icon: string; id: number } | null>(null)
   const [modeBurst, setModeBurst] = useState<{ label: string; id: number } | null>(null)
   const prevMode = useRef(mode)
@@ -223,9 +224,27 @@ export default function VideoPlayer({
               <button onClick={() => jumpEvent(1)} title="Next event (N)">⇥</button>
             </div>
             <div className="right">
-              <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} title="Speed (+/-)">
-                {SPEEDS.map((s) => <option key={s} value={s}>{s}x</option>)}
-              </select>
+              <div className="speed-menu">
+                <button
+                  className="speed-btn"
+                  title="Speed (+/-)"
+                  onClick={() => setSpeedOpen(!speedOpen)}
+                >{speed}x</button>
+                {speedOpen && (
+                  <div className="menu speed-options">
+                    {SPEEDS.map((s) => (
+                      <button
+                        key={s}
+                        className={s === speed ? 'active' : ''}
+                        onClick={() => {
+                          changeSpeed(s)
+                          setSpeedOpen(false)
+                        }}
+                      >{s}x</button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button onClick={() => wrapRef.current?.requestFullscreen()} title="Fullscreen (F)">⛶</button>
             </div>
           </div>
