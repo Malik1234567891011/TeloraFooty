@@ -105,7 +105,9 @@ test('remove button plays the leave animation, then calls onRemove', () => {
   vi.useRealTimers()
 })
 
-test('verified event shows the verified state', () => {
+test('verified event hides the rating buttons and shows the verified state', () => {
   setup({ events: [{ ...events[0], verified: true }] })
-  expect(screen.getAllByTitle('Correct call')[0].className).toContain('confirmed')
+  expect(screen.queryByTitle('Correct call')).not.toBeInTheDocument()
+  expect(screen.queryByTitle('Bad call — remove')).not.toBeInTheDocument()
+  expect(screen.getByText('✓ Verified')).toBeInTheDocument()
 })

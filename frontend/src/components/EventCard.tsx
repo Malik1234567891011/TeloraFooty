@@ -73,17 +73,22 @@ export default function EventCard({
       </div>
 
       <div className="card-strip" onClick={(e) => e.stopPropagation()}>
-        <button
-          className={`rate${event.verified ? ' confirmed' : ''}`}
-          title="Correct call"
-          onClick={confirm}
-        >✓ Correct</button>
-        <button className="rate bad" title="Bad call — remove" onClick={remove}>✗ Remove</button>
+        {event.verified ? (
+          <span className="strip-verified">✓ Verified</span>
+        ) : (
+          <>
+            <button className="rate" title="Correct call" onClick={confirm}>✓ Correct</button>
+            <button className="rate bad" title="Bad call — remove" onClick={remove}>✗ Remove</button>
+          </>
+        )}
         <button title="Export clip" onClick={onExport}>⤓ Export</button>
       </div>
 
       {menuOpen && (
         <div className="menu" onClick={(e) => e.stopPropagation()}>
+          {event.verified && (
+            <button onClick={() => { setMenuOpen(false); onConfirm() }}>Unverify</button>
+          )}
           <button onClick={() => { setMenuOpen(false); onSwitchType() }}>
             Switch to {event.type === 'goal' ? 'shot' : 'goal'}
           </button>
