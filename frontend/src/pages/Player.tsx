@@ -32,7 +32,7 @@ export default function Player() {
     const v = videoRef.current
     if (!v) return
     v.currentTime = startTime(mode, ev)
-    v.play()
+    v.play().catch(() => {})
   }
 
   function switchMode(m: Mode) {
@@ -40,7 +40,7 @@ export default function Player() {
     const v = videoRef.current
     if (m === 'clip' && selected && v) {
       v.currentTime = selected.clipStart
-      v.play()
+      v.play().catch(() => {})
     }
   }
 

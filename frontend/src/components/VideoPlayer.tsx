@@ -27,7 +27,7 @@ export default function VideoPlayer({
   function togglePlay() {
     const v = video()
     if (!v) return
-    if (v.paused) v.play()
+    if (v.paused) v.play().catch(() => {})
     else v.pause()
   }
 
