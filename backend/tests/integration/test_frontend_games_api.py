@@ -55,3 +55,24 @@ def test_delete_game(client):
     assert client.delete("/api/games/game_t1").json() == {"ok": True}
     assert client.get("/api/games/game_t1").status_code == 404
     assert client.delete("/api/games/game_t1").status_code == 404
+
+
+def test_list_games_includes_progress_for_running_job(client):
+    from app.models import Job
+    _seed(status="processing")
+    store.save_job(Job(id="jp", job_type="full_game", game_id="game_t1",
+                       status="processing", progress=37, message="Scanning 3/8 windows"))
+    body = client.get("/api/games").json()
+    g = next(x for x in body if x["id"] == "game_t1")
+    assert g["progress"] == 37
+    assert g["progressMessage"] == "Scanning 3/8 windows"
+
+
+def test_list_games_no_progress_when_ready(client):
+    from app.models import Job
+    _seed(status="completed")
+    store.save_job(Job(id="jd", job_type="full_game", game_id="game_t1",
+                       status="completed", progress=100, message="done"))
+    g = next(x for x in client.get("/api/games").json() if x["id"] == "game_t1")
+    assert g["progress"] is None
+    assert g["progressMessage"] is None

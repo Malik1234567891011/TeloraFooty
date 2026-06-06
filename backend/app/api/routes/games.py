@@ -20,16 +20,29 @@ def _require_game(game_id: str):
     return game
 
 
+def _progress_for(game):
+    """Live job progress, only while the game is mid-run."""
+    if game.status not in {"downloading", "processing"}:
+        return None, None
+    job = store.latest_job_for_game(game.id)
+    if job is None:
+        return None, None
+    return job.progress, job.message
+
+
 @router.get("")
 def list_games() -> list[dict]:
     out = []
     for g in sorted(store.list_games(), key=lambda g: g.created_at, reverse=True):
         events = store.events_for_game(g.id)
+        progress, message = _progress_for(g)
         out.append(
             game_out(
                 g,
                 goals=sum(1 for e in events if e.event_type == "goal"),
                 shots=sum(1 for e in events if e.event_type == "shot"),
+                progress=progress,
+                progress_message=message,
             ).model_dump()
         )
     return out
@@ -37,7 +50,9 @@ def list_games() -> list[dict]:
 
 @router.get("/{game_id}")
 def get_game(game_id: str) -> dict:
-    return game_out(_require_game(game_id)).model_dump()
+    game = _require_game(game_id)
+    progress, message = _progress_for(game)
+    return game_out(game, progress=progress, progress_message=message).model_dump()
 
 
 @router.delete("/{game_id}")
