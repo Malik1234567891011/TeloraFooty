@@ -21,6 +21,11 @@ _TMP_STORAGE = tempfile.mkdtemp(prefix="telora_test_storage_")
 os.environ["STORAGE_DIR"] = _TMP_STORAGE
 os.environ["ENABLE_SEED"] = "false"
 os.environ["ENABLE_ML_DETECTORS"] = "false"
+# Tests must stay hermetic: never call the live Gemini API, even when the
+# developer's backend/.env holds a real key (real env vars beat .env values).
+os.environ["ENABLE_VLM"] = "false"
+os.environ["ENABLE_WHOLECLIP_DETECTOR"] = "false"
+os.environ["GEMINI_API_KEY"] = ""
 
 FFMPEG = shutil.which("ffmpeg")
 requires_ffmpeg = pytest.mark.skipif(FFMPEG is None, reason="ffmpeg not installed")

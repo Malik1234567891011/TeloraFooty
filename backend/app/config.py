@@ -77,6 +77,18 @@ class Settings(BaseSettings):
     # How many windows to judge concurrently (Gemini calls run in threads).
     vlm_concurrency: int = 3
 
+    # Whole-clip two-stage detector (EXPERIMENT 2-WC — the primary short-clip
+    # path; see docs/callibrations+results.md and services/wholeclip_detector.py).
+    enable_wholeclip_detector: bool = True
+    wc_votes: int = 5                # stage-1 localization votes per clip
+    wc_max_candidates: int = 3       # stage-1 candidate budget (frozen protocol)
+    wc_verify_votes: int = 3         # stage-2 votes per candidate window
+    wc_verify_fps: float = 5.0       # stage-2 frame sampling (denser than 1fps default)
+    wc_zoom_pre: float = 7.0         # stage-2 window: seconds before candidate
+    wc_zoom_post: float = 12.0       # stage-2 window: seconds after candidate
+    wc_min_conf: float = 0.5         # verified attempts below this are noise
+    wc_seq_gap: float = 8.0          # attempts within this gap = one sequence
+
     # Decision thresholds. Calibrated against verified ground truth
     # (see docs/callibrations+results.md). Each clip has exactly one real shot,
     # so precision matters as much as recall.

@@ -21,6 +21,7 @@ from app.cv.event_classifier import ClassifierInputs, classify_event
 from app.cv.player_detector import get_player_detector
 from app.services.clip_service import clip_window_for_event, generate_clip
 from app.services.vlm_service import VlmJudgment, get_vlm_judge
+from app.services.wholeclip_detector import get_wholeclip_detector
 
 logger = get_logger(__name__)
 
@@ -45,6 +46,21 @@ def analyze_demo_clip(
 ) -> DemoAnalysis:
     analysis_id = new_id("analysis")
     video_path = Path(video_path)
+
+    # 0) Primary path: whole-clip two-stage detector (EXPERIMENT 2-WC, the only
+    #    approach that hit 8/8 on the verified short-clip suite — see
+    #    docs/callibrations+results.md). Falls through to the legacy
+    #    window-voting + local-CV pipeline when unavailable (no API key/ffmpeg).
+    if settings.enable_wholeclip_detector:
+        detector = get_wholeclip_detector()
+        if detector.available:
+            try:
+                wc = detector.analyze(video_path)
+                if wc.error is None:
+                    return _demo_analysis_from_wholeclip(wc, analysis_id, video_path, team_name)
+                logger.warning("Whole-clip detector errored (%s); falling back.", wc.error)
+            except Exception as exc:
+                logger.warning("Whole-clip detector failed (%s); falling back.", exc)
 
     # 1) Frame extraction
     extracted = frame_extractor.extract_frames(
@@ -207,6 +223,34 @@ def analyze_demo_clip(
         clip_url=clip_url,
         explanation=explanation,
         debug=debug,
+    )
+
+
+def _demo_analysis_from_wholeclip(
+    wc, analysis_id: str, video_path: Path, team_name: str | None
+) -> DemoAnalysis:
+    """Package a WholeClipResult as the standard DemoAnalysis (incl. clip cut)."""
+    clip_url = None
+    duration = None
+    if wc.event_type in {"shot", "goal"} and wc.timestamp_seconds is not None:
+        try:
+            from app.services.video_metadata_service import get_video_metadata
+
+            duration = get_video_metadata(video_path).duration_seconds
+        except Exception:
+            duration = None
+        clip_url = _generate_demo_clip(
+            video_path, analysis_id, wc.event_type, wc.timestamp_seconds, duration or 0.0
+        )
+    return DemoAnalysis(
+        analysis_id=analysis_id,
+        event_type=wc.event_type,
+        timestamp_seconds=wc.timestamp_seconds,
+        confidence=wc.confidence,
+        team=_normalize_team(team_name),
+        clip_url=clip_url,
+        explanation=wc.explanation,
+        debug={**wc.debug, "vlm_available": True},
     )
 
 

@@ -468,3 +468,236 @@ temporal action-spotting model — the soccer-analytics-standard approach), whic
 the architecture noted at the top of this lab. Decision deferred to user.
 
 ---
+
+## EXPERIMENT 2-WC — whole-clip Gemini localization + K-vote consensus
+(`scripts/stage1_exp2_wholeclip.py`)
+
+**Protocol deviation (user-approved):** Gemini IS allowed in this experiment.
+The "no Gemini in Stage 1" rule existed because per-window VLM **voting** failed
+as a localizer (iter-8 correction). This tests a structurally different use:
+ONE call over the WHOLE original clip — **1080p, WITH audio** (the old path cut
+8s windows, downscaled to 640px, stripped audio) — asking the model to
+comparatively localize the decisive strike across the full timeline, K
+independent votes, timestamps clustered across votes (4s slack), top-≤3
+clusters by (rank-weighted confidence × cross-vote-agreement) as candidates.
+
+**Hypothesis:** per-window firing was the artifact of asking a classification
+question without global context. Given the whole timeline in one request, the
+model can compare moments and anchor on the aftermath (keeper possession / goal
+kick / corner / celebration), so the true strike ranks in the top-3 candidates.
+
+**Run 1 (votes=3, fps=default 1): 8/8 PASS** — first approach to hit the bar.
+Closest distances: 0.5, 4.0, 1.0, 1.0, 2.5, 0.4, 1.9, 1.1.
+
+**Runs 2-3 (same config): 7/8, 6/8 FAILED** — two systematic failure modes:
+1. `goal_3653` consistently lands ~25.5-26.0 (4.0-4.5s early). Frame inspection
+   shows a set piece: at 26.5s the box is still in free-kick formation; the ball
+   arrives ~29.5s. The model timestamps the START of the sequence it attends to
+   (delivery), not the strike/net moment.
+2. A recurring phantom candidate at ~0.2-0.3s (run 3: 7 of 8 clips; run-3
+   `goal_2312` returned ONLY `goal@0.288` — a total miss).
+
+**Root cause of the phantom (decisive find):** numeric formatting collapse, not
+perception. Cross-referencing votes: `goal_2312` flips between `29.5` and
+`0.288` (= 28.8/100); `goal_3653` between `25.5` and `0.255` (= 25.5/100
+exactly). Gemini intermittently emits the seconds value shifted two decimal
+places when forced to a JSON number. Run-3 `goal_2312`'s "miss" was actually
+three unanimous votes for ~28.8s wearing the wrong units.
+
+**Fix:** prompt now requires the strike time BOTH as `"strike_time": "M:SS.s"`
+string and as a number; the parser treats MM:SS as authoritative
+(`candidate_ts()`), numeric field is fallback only.
+
+**Remaining issue for the product (top-1):** candidate recall ≥ top-3 is not the
+user bar — the single headline answer must land at ~30s. In flurry clips
+(`shot_2512`, `shot_4550` — verified by frame inspection to contain real
+multi-attempt goalmouth sieges) the most-voted candidate is an EARLIER attempt
+of the same sequence. Addressed by Stage-2 zoom verification + sequence
+resolution (`scripts/exp_pipeline_v2.py`): each candidate window re-verified on
+a 16s native-1080p subclip WITH audio at fps=5 (exact strike time, outcome, and
+whether play RESETS after the attempt), then deterministic selection: attempts
+group into sequences (gap ≤ 8s); headline = last attempt of the best sequence
+after which play resets — generic soccer logic (a flurry is decided by the
+attempt that ends it), no clip-specific tuning.
+
+### Pipeline V2 results (stage 1 + stage 2 + selection, scored on TOP-1)
+
+**First full run: TOP-1 8/8 PASS** — every headline within ±2.9s of 30.0
+(distances 0.2, 2.4, 0.4, 0.4, 2.5, 0.6, 1.5, 2.9). `shot_4544`'s two real
+keeper events (≈16s and ≈31.5s) were separated correctly by the sequence rule
+(16s verified "continues" w=2.0; 31.5s verified "resets" w=3.0 → wins).
+
+**Goal-vs-shot was the last wart.** `goal_3653` is a SCRAMBLE goal (frame
+inspection: free kick ~28s → keeper punch-out → goal-mouth scramble → ball
+forced in ~30s → celebration at 31.2s). The stage-2 zoom reports only
+"parry, continues" — it loses the ball in the scramble. Meanwhile the
+whole-clip pass votes "goal(net)" 5/5 on every run. Inverse problem on
+`shot_2701`: whole-clip votes "net" 40–80% per run, but frame inspection proves
+NO goal — the ball rests just outside the side netting and a GOAL KICK restarts
+play (33–39s). **The wide camera's "net" call is a parallax illusion** (a ball
+beside the net reads as inside it).
+
+**Four arbiter designs tested and rejected** (each validated/refuted on saved
+run data or cheap targeted A/Bs before full runs):
+1. Stage-1 consensus promotion (≥0.7, ≥3 votes): wrongly promotes 2701 (its
+   goal-vote fraction reached 0.8 in some runs).
+2. Celebration/aftermath video check: confirms 3653 ✓ but false-confirms 2701 ✗
+   (aftermath stills of the two clips are nearly indistinguishable at this
+   distance; the model confabulates celebration).
+3. Ball-fate tracking ("track the ball after the keeper touch"): rejects 2701 ✓
+   (3/3) but misses 3653's scramble goal ✗ (follows the FIRST resolution, the
+   punch-out, and stops).
+4. Combined forensic check (final-resolution + net-retrieval + celebration +
+   keeper-distribution cues): 3653 ✓ 6/6 but 2701 ✗ 5/6 "in_net, celebration"
+   — the parallax illusion survives every goal-mouth video question.
+Also tested: a sharpened goal definition in the stage-1 prompt ("a real goal is
+ALWAYS followed by play stopping; keeper distribution ⇒ not a goal"). Kept (it
+sharpened timestamps to 28.5–29.5 and held both real goals at 5/5) but it did
+NOT fix 2701 (still 2/5–4/5 goal votes between rounds).
+
+**Interim rule — witness trust:** trust stage-2 unless its sequence ended
+"continues" (unresolved), then defer to stage-1 consensus. Replayed 8/8 on one
+run's data — but the first 3-run stability gauntlet broke it (7/8, 7/8, 7/8):
+every run a DIFFERENT field lied (stage-2 "catch, resets" on the 3653 scramble
+goal; stage-2 "net" on 4544's non-goal — the parallax reaches the zoom level
+too; stage-1 4/5 "goal" on 4544 under a since-reverted prompt line).
+
+### Stability gauntlet findings (3 runs, pre-final fixes)
+
+1. **`shot_4550` failed the TIMESTAMP bar in all 3 runs the same way**
+   (headline 25.0–25.8, 4.2–5.0s early): greedy stage-1 clustering CHAINS the
+   real 25s save and the real 31s strike into ONE candidate (each link ≤ 4s
+   slack), so only one mis-centred zoom window is cut and the true strike never
+   gets verified. **Fix: split clusters spanning > slack at their largest
+   internal gap** (same-moment vote scatter is ≤~3s; a wider cluster is two
+   moments wearing one hat). Also stage-2 votes 2 → 3.
+2. **Prompt lesson:** the "goals can come from scrambles, judge by what
+   follows" line (added to help 3653) flipped 4544's stage-1 to 4-5/5 "goal" —
+   it was validated on 3 clips, not the full suite. REVERTED. Prompt changes
+   must be validated suite-wide.
+3. **Image-panel arbiter (stills at native res), A/B-tested two variants:**
+   v1: perfect rejections (2701, 4544: 12/12) but only 1/3 on the 3653 scramble
+   goal — votes fixate on a static ball behind the goal ("spare ball" decoy).
+   v2 (+spare-ball guard): fixed 3653 (6/6) but **vetoed the CLEAN goal 2312
+   0/3 in one round** (a ball sitting in the net is also "motionless across
+   frames") and eroded 4544's rejection. Panels add an OBSERVED risk against
+   true goals; rejected from the decision, kept in code for the record.
+
+**FINAL type rule — stage-1 unanimity, nothing else:** `goal` iff ALL K
+whole-clip votes call the moment a goal (members 100% "goal", ≥K distinct
+votes, within 6s of the headline). Evidence: both real goals are 5/5 in every
+observed run (7+ runs); no true shot ever reached 5/5 with the final prompt
+(worst observed: 4/5 once each for 2701/4544 under earlier prompts). Replaying
+the rule over all 3 gauntlet runs: **24/24 types correct.** Every richer
+signal — stage-2 "net", three video arbiters, two image panels — was rejected
+on measured evidence as parallax-fallible in at least one direction.
+
+### Final round — the long-range blind spot + the goal-label verdict
+
+**`shot_4550` root cause (the last timestamp failure):** frame inspection shows
+the labeled strike at 30s is a LONG-RANGE shot from ~35-40 yards — the shooter
+is at the far edge of the frame, ball flying in over the bar area at ~31s. Our
+own prompts said the strike is "a single kick by one attacker **near or inside
+the penalty box**" — the pipeline was *instructed* not to find this shot, so
+both stages collapsed onto the (real) earlier box attempt at ~24s, every run.
+**Fix:** both prompts now state attempts can come from anywhere in range,
+including 25-40 yards, with the cue to watch ball flight + keeper reaction.
+Single-clip validation: stage-1 votes for ~31.0 went 0/5 → 3-4/5; timestamp
+passes (1.3s). Lab lesson learned twice now: iterate on the FAILING CLIP ALONE
+(2-min runs) before paying for full-suite gauntlets.
+
+**Goal-vs-shot: measured to the end, then scope-cut.** Two further approaches
+tested and refuted after the panel:
+- **Cropped goal-mouth stills (the parked "Approach A"): definitively refuted.**
+  With a 2x zoom crop the model reports "ball clearly inside the net, conf 1.0"
+  for ALL FOUR type-critical clips — 24/24 votes — including both non-goals.
+  The camera's elevation/angle makes a ball lying beside/behind the net
+  visually identical to one inside it; zooming amplifies acuity, not geometry.
+  This retroactively explains every spurious "net" vote across the project.
+- **Restart classification from stills:** classifies the aftermath as
+  "goal_kick" for everything — including both true goals — so it would veto
+  real goals. Refuted.
+
+That makes EIGHT measured signals (s1 consensus, s1 unanimity, video
+celebration, video ball-fate, forensic combined, image panels v1/v2, goal-mouth
+crops, restart classification), none reliable on the two pathological clips
+(`goal_3653` scramble goal, `shot_2701` parallax near-miss). **Conclusion: on
+this footage the goal-vs-shot distinction for these cases is not reliably
+extractable by the current VLM** — the discriminating information barely exists
+from this camera angle within 10s of aftermath.
+
+**Scope decision (user-driven):** the product bar is the TIMESTAMP ("all 8
+flagged at ~30s every run"). Goal-vs-shot labels ship best-effort via stage-1
+unanimity (correct in 22/24 replayed gauntlet cases; both label-error modes
+documented). Future fix paths: a temporal action-spotting model (Experiment 3)
+or camera-side improvement (second angle / higher mount).
+
+**Bar relaxation (user, overnight):** "doesn't need to be perfect, 80-90% is
+good too." Operational reading: kill SYSTEMATIC failures (same clip failing
+every run); tolerate occasional MARGINAL misses (borderline timestamps on
+rotating clips). Over-detection preferred to under-detection throughout.
+
+### Overnight gauntlets + robustness hardening (v6/v7)
+
+Three more rounds of cause-elimination, all from full-log evidence:
+1. `shot_3050` — second long-range-strike clip (strike from ~25 yards at 30.0s,
+   earlier goalmouth action stealing attention). Fixed by the long-range prompt
+   plus a wider verify window; later runs also exposed that my "follow-up
+   chase" (added for 3050) RE-VERIFIED already-covered seconds on `shot_4544`,
+   stacking duplicate hallucinated readings of its dead-ball goal-kick
+   choreography and dragging the median late (34.6). Chase now gated to NEW
+   GROUND only (`cover_end`); on 40s clips it self-disables. 4544: 4/4 solo
+   passes after the gate (33.2 ×3, 33.4).
+2. Transient infrastructure was producing whole-clip "none" results: one run
+   died on `SSL: TLSV1_ALERT_DECODE_ERROR` (the easiest clip, goal_2312, which
+   passes every healthy run). Hardening: retry list now covers network/TLS
+   flakes and 5xx, and stage-1 votes / stage-2 windows degrade PER-CALL instead
+   of killing the clip.
+3. Lab-process lessons, learned the expensive way: iterate on the failing clip
+   ALONE (2-min runs) before full gauntlets; never grep-filter validation logs
+   (it hid the SSL error and cost a diagnosis round); one change at a time
+   (bundling window-widening + chase masked which one fixed 3050).
+
+**Gauntlet v6 (pre-hardening code): 7/8, 7/8, 8/8.**
+- run 1: `3050` at 25.9 — 0.1s over tolerance (marginal).
+- run 2: `2312` "none" — the TLS flake (infra, not detection); detection-wise
+  this run was effectively 8/8.
+- run 3: **8/8 PASS, all 8 types correct** — first fully clean run.
+
+**Gauntlet v7 (hardened, official): 8/8, 8/8, 8/8 — all types correct in all
+three runs.** Combined with v6 run 3 that is FOUR consecutive perfect runs,
+satisfying the ORIGINAL strict protocol (3× consecutive 8/8 at ±4s), beyond
+the relaxed 80-90% bar. Distance profile across the three official runs:
+max 3.8s (goal_3653 once), 19 of 24 clip-runs within 2.1s, several at 0.0-0.2s.
+Both goals labelled "goal" with "net" outcomes in every run; no parallax
+mislabels.
+
+| Clip | v7 r1 | v7 r2 | v7 r3 |
+|------|-------|-------|-------|
+| goal_2312 | goal 29.8 (0.2) | goal 28.3 (1.7) | goal 28.3 (1.7) |
+| goal_3653 | goal 27.9 (2.1) | goal 27.5 (2.5) | goal 26.2 (3.8) |
+| shot_2512 | 30.1 (0.1) | 30.0 (0.0) | 30.0 (0.0) |
+| shot_2701 | 29.3 (0.7) | 29.3 (0.7) | 29.9 (0.1) |
+| shot_3050 | 27.9 (2.1) | 28.5 (1.5) | 28.3 (1.7) |
+| shot_4509 | 31.0 (1.0) | 31.0 (1.0) | 31.0 (1.0) |
+| shot_4544 | 33.2 (3.2) | 33.2 (3.2) | 32.7 (2.7) |
+| shot_4550 | 28.5 (1.5) | 28.5 (1.5) | 28.5 (1.5) |
+
+### End-to-end proof (production path)
+
+`python scripts/run_clips.py ../clips` → `analyze_demo_clip` →
+`wholeclip_detector` (the real backend code path, not the lab script):
+**8/8 detected at ~30s, both goals labelled `goal`, all shots `shot`:**
+29.8, 27.5, 30.4, 29.9, 27.7, 31.0, 33.0, 28.5 — every clip within ±4s.
+
+---
+
+**Production port:** `app/services/wholeclip_detector.py` (same prompts +
+logic, knobs in `config.py` as `wc_*`), wired as the primary path in
+`detection_service.analyze_demo_clip` with the legacy window-voting pipeline as
+fallback when no API key/ffmpeg. Tests hardened to stay hermetic
+(`tests/conftest.py` forces `ENABLE_VLM=false`, `ENABLE_WHOLECLIP_DETECTOR=false`,
+empty `GEMINI_API_KEY`) so a developer's real `.env` key can never make the
+suite call the live API.
+
+---

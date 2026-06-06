@@ -202,8 +202,14 @@ def _api_key() -> str:
 
 
 def _is_rate_limit(exc: Exception) -> bool:
+    """Retryable: rate limits, transient server errors, AND network/TLS flakes."""
     msg = str(exc).lower()
-    return any(t in msg for t in ("429", "resource_exhausted", "quota", "rate limit", "too many requests"))
+    return any(t in msg for t in (
+        "429", "resource_exhausted", "quota", "rate limit", "too many requests",
+        "500", "502", "503", "internal", "unavailable", "deadline", "timed out", "timeout",
+        "ssl", "tls", "connection", "socket", "eof occurred", "broken pipe",
+        "remotedisconnected", "reset by peer",
+    ))
 
 
 def _with_retry(fn, *, attempts: int = 6, base_delay: float = 5.0):

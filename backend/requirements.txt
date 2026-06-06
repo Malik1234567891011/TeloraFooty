@@ -11,6 +11,9 @@ opencv-python-headless==4.11.0.86
 numpy==2.2.1
 ffmpeg-python==0.2.0
 
+# Video-language-model judge (Gemini) — vlm_service.py imports `from google import genai`
+google-genai
+
 # Testing
 pytest==8.3.4
 httpx==0.28.1
