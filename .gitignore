@@ -22,9 +22,11 @@ backend/.env
 node_modules/
 frontend/dist/
 
-# Legacy MVP data dir + superpowers scratch
+# Legacy MVP data dir + tool scratch dirs
 data/
 .superpowers/
+.claude/
+.playwright-mcp/
 
 # Local storage / generated media (do NOT commit large videos or generated clips)
 backend/storage/uploads/*
