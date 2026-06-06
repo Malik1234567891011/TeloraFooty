@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import ClipsPanel from '../components/ClipsPanel'
+import ExportModal from '../components/ExportModal'
 import VideoPlayer from '../components/VideoPlayer'
-import { clipEnded, fmtTime, startTime, type FilterTab, type Mode } from '../playback'
+import { clipEnded, startTime, type FilterTab, type Mode } from '../playback'
 import type { EventType, Game, GameEvent } from '../types'
 
 export default function Player() {
@@ -14,6 +15,7 @@ export default function Player() {
   const [mode, setMode] = useState<Mode>('full')
   const [tab, setTab] = useState<FilterTab>('all')
   const [selected, setSelected] = useState<GameEvent | null>(null)
+  const [exporting, setExporting] = useState<GameEvent | null>(null)
   const [error, setError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const lastTimeRef = useRef(0)
@@ -118,17 +120,10 @@ export default function Player() {
     }
   }
 
-  async function exportEvent(ev: GameEvent) {
-    try {
-      const blob = await api.exportClip(gameId, ev.id)
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = `${game!.title.replaceAll(' ', '_')}_${ev.type}_${fmtTime(ev.timestamp).replace(':', '')}.mp4`
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-    } catch (e) {
-      setError((e as Error).message)
-    }
+  function exportEvent(ev: GameEvent) {
+    // Pause the main player so the modal's clip preview has the stage.
+    videoRef.current?.pause()
+    setExporting(ev)
   }
 
   if (!game) return <div className="page">{error ?? 'Loading…'}</div>
@@ -180,6 +175,10 @@ export default function Player() {
         Space play/pause · ←/→ ±5s · <strong>H</strong> tag shot · <strong>G</strong> tag goal ·
         N/P next/prev event · +/− speed · F fullscreen
       </p>
+
+      {exporting && (
+        <ExportModal game={game} event={exporting} onClose={() => setExporting(null)} />
+      )}
     </div>
   )
 }

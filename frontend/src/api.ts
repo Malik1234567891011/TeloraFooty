@@ -47,11 +47,9 @@ export const api = {
     fetch(`/api/games/${gameId}/events/${eventId}`, { method: 'DELETE' }).then((r) =>
       asJson<{ ok: boolean }>(r),
     ),
-  exportClip: async (gameId: string, eventId: string): Promise<Blob> => {
-    const res = await fetch(`/api/games/${gameId}/events/${eventId}/export`, { method: 'POST' })
-    if (!res.ok) throw new Error('Export failed')
-    return res.blob()
-  },
+  emailClip: (gameId: string, eventId: string, to: string) =>
+    post(`/api/games/${gameId}/events/${eventId}/email`, { to }).then((r) => asJson<{ ok: boolean }>(r)),
   videoUrl: (gameId: string) => `/api/games/${gameId}/video`,
   thumbUrl: (gameId: string, eventId: string) => `/api/games/${gameId}/events/${eventId}/thumb.jpg`,
+  clipUrl: (gameId: string, eventId: string) => `/api/games/${gameId}/events/${eventId}/clip.mp4`,
 }

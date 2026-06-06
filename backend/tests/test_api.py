@@ -3,6 +3,7 @@ import shutil
 import pytest
 from fastapi.testclient import TestClient
 
+import emailer
 import importer
 import store
 from main import app
@@ -135,3 +136,50 @@ def test_export_clip_endpoint(ready_game):
     assert res.headers["content-type"] == "video/mp4"
     assert "attachment" in res.headers["content-disposition"]
     assert len(res.content) > 0
+
+
+def test_clip_preview_stream(ready_game):
+    ev = client.get(f"/api/games/{ready_game['id']}/events").json()[0]
+    res = client.get(f"/api/games/{ready_game['id']}/events/{ev['id']}/clip.mp4")
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "video/mp4"
+    assert len(res.content) > 0
+    # the generated clip is cached for reuse (preview, download, email)
+    exports = list((store.game_dir(ready_game["id"]) / "exports").glob("*.mp4"))
+    assert len(exports) == 1
+    # second request reuses the cached file
+    assert client.get(f"/api/games/{ready_game['id']}/events/{ev['id']}/clip.mp4").status_code == 200
+    assert len(list((store.game_dir(ready_game["id"]) / "exports").glob("*.mp4"))) == 1
+
+
+def test_email_clip_not_configured(ready_game, monkeypatch):
+    monkeypatch.delenv("SMTP_USER", raising=False)
+    monkeypatch.delenv("SMTP_PASS", raising=False)
+    ev = client.get(f"/api/games/{ready_game['id']}/events").json()[0]
+    res = client.post(f"/api/games/{ready_game['id']}/events/{ev['id']}/email",
+                      json={"to": "coach@example.com"})
+    assert res.status_code == 400
+    assert "configured" in res.json()["detail"]
+
+
+def test_email_clip_rejects_bad_address(ready_game):
+    ev = client.get(f"/api/games/{ready_game['id']}/events").json()[0]
+    res = client.post(f"/api/games/{ready_game['id']}/events/{ev['id']}/email",
+                      json={"to": "not-an-email"})
+    assert res.status_code == 422
+
+
+def test_email_clip_sends(ready_game, monkeypatch):
+    sent = {}
+
+    def fake_send(to, subject, body, attachment):
+        sent.update(to=to, subject=subject, attachment=attachment)
+
+    monkeypatch.setattr(emailer, "send_clip_email", fake_send)
+    ev = client.get(f"/api/games/{ready_game['id']}/events").json()[0]
+    res = client.post(f"/api/games/{ready_game['id']}/events/{ev['id']}/email",
+                      json={"to": "coach@example.com"})
+    assert res.status_code == 200
+    assert sent["to"] == "coach@example.com"
+    assert "API Game" in sent["subject"]
+    assert sent["attachment"].exists()

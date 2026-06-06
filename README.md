@@ -54,3 +54,15 @@ used to judge the future AI detector's accuracy.
 - Events are seeded with random placeholder timestamps on import
   (`backend/importer.py: generate_sample_events`) plus manual tagging.
   The `source` field is ready for a future AI detector.
+
+## Emailing clips
+
+The export popup can email a clip as an attachment. Configure once in
+`backend/.env`:
+
+    SMTP_USER=you@gmail.com
+    SMTP_PASS=your-gmail-app-password
+
+For Gmail, create an app password at https://myaccount.google.com/apppasswords
+(requires 2-step verification). Other providers: also set SMTP_HOST/SMTP_PORT.
+Restart the backend after editing .env.

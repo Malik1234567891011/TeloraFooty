@@ -9,8 +9,11 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 import clipper
+import emailer
 import importer
 import store
+
+emailer.load_env()
 
 app = FastAPI(title="TeloraFooty")
 
@@ -29,6 +32,10 @@ class EventPatch(BaseModel):
     type: Literal["shot", "goal"] | None = None
     timestamp: float | None = None
     verified: bool | None = None
+
+
+class EmailRequest(BaseModel):
+    to: str
 
 
 @app.get("/api/health")
@@ -166,20 +173,52 @@ def event_thumb(game_id: str, event_id: str):
     return FileResponse(thumb, media_type="image/jpeg")
 
 
-@app.post("/api/games/{game_id}/events/{event_id}/export")
-def export_event(game_id: str, event_id: str):
+def _ensure_clip(game_id: str, event_id: str) -> tuple[dict, dict, Path]:
+    """Cut the event's clip if not already cached; return (game, event, path)."""
     game = _require_game(game_id)
     event = next((e for e in store.load_events(game_id) if e["id"] == event_id), None)
     if event is None:
         raise HTTPException(404, "Event not found")
-    video = store.game_dir(game_id) / "video.mp4"
     ts = event["timestamp"]
     stamp = f"{int(ts // 60):02d}{int(ts % 60):02d}"
     safe_title = re.sub(r"[^\w\-]", "_", game["title"])
-    filename = f"{safe_title}_{event['type']}_{stamp}.mp4"
-    out = store.game_dir(game_id) / "exports" / filename
+    out = store.game_dir(game_id) / "exports" / f"{safe_title}_{event['type']}_{stamp}.mp4"
+    if not out.exists():
+        video = store.game_dir(game_id) / "video.mp4"
+        try:
+            clipper.export_clip(video, event["clipStart"], event["clipEnd"], out)
+        except RuntimeError as exc:
+            raise HTTPException(500, f"Export failed: {exc}")
+    return game, event, out
+
+
+@app.post("/api/games/{game_id}/events/{event_id}/export")
+def export_event(game_id: str, event_id: str):
+    _, _, out = _ensure_clip(game_id, event_id)
+    return FileResponse(out, media_type="video/mp4", filename=out.name)
+
+
+@app.get("/api/games/{game_id}/events/{event_id}/clip.mp4")
+def event_clip(game_id: str, event_id: str):
+    """Streamable clip for in-app preview (and direct download)."""
+    _, _, out = _ensure_clip(game_id, event_id)
+    return FileResponse(out, media_type="video/mp4")
+
+
+@app.post("/api/games/{game_id}/events/{event_id}/email")
+def email_clip(game_id: str, event_id: str, body: EmailRequest):
+    if not re.fullmatch(r"\S+@\S+\.\S+", body.to.strip()):
+        raise HTTPException(422, "Enter a valid email address")
+    game, event, out = _ensure_clip(game_id, event_id)
+    ts = event["timestamp"]
+    when = f"{int(ts // 60)}:{int(ts % 60):02d}"
+    subject = f"TeloraFooty clip: {game['title']} — {event['type']} at {when}"
+    text = (f"Clip from {game['title']} ({game['date']}): {event['type']} at {when}.\n"
+            f"30 seconds before → 10 seconds after the moment. Video attached.")
     try:
-        clipper.export_clip(video, event["clipStart"], event["clipEnd"], out)
-    except RuntimeError as exc:
-        raise HTTPException(500, f"Export failed: {exc}")
-    return FileResponse(out, media_type="video/mp4", filename=filename)
+        emailer.send_clip_email(body.to.strip(), subject, text, out)
+    except emailer.EmailNotConfigured as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:
+        raise HTTPException(502, f"Email failed: {exc}")
+    return {"ok": True}
