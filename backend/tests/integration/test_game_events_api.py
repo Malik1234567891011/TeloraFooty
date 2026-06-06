@@ -61,16 +61,17 @@ def test_full_game_processing_integration(client, sample_5s: Path):
     # Process synchronously for a deterministic test.
     processing_service.process_game_from_annotations(game_id)
 
-    events = client.get(f"/api/games/{game_id}/events").json()["events"]
+    events = client.get(f"/api/games/{game_id}/events").json()
     assert len(events) == 2
     # Sorted by timestamp.
-    assert events[0]["timestamp_seconds"] <= events[1]["timestamp_seconds"]
+    assert events[0]["timestamp"] <= events[1]["timestamp"]
     # Goal not double-tagged as shot.
     types = [e["type"] for e in events]
     assert types == ["shot", "goal"]
     for e in events:
         assert e["source"] == "manual"
         assert e["confidence"] == 1.0
+        assert e["verified"] is False
 
     clips = client.get(f"/api/games/{game_id}/clips").json()["clips"]
     assert len(clips) == 2

@@ -5,7 +5,6 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from app.schemas.clip_schema import ClipOut, GameClipsResponse
-from app.schemas.event_schema import EventOut, GameEventsResponse
 from app.schemas.frontend_api import game_out
 from app.schemas.game_schema import ProcessGameResponse
 from app.services import job_service, media_service, processing_service
@@ -66,29 +65,6 @@ def process_game(game_id: str, background_tasks: BackgroundTasks) -> ProcessGame
         game_id=game_id,
         status="processing",
         message="Full game processing started. Results will be available shortly.",
-    )
-
-
-@router.get("/{game_id}/events", response_model=GameEventsResponse)
-def get_game_events(game_id: str) -> GameEventsResponse:
-    """Temporary internal shape — replaced by the frontend-contract events router in Task 4."""
-    _require_game(game_id)
-    events = store.events_for_game(game_id)
-    return GameEventsResponse(
-        game_id=game_id,
-        events=[
-            EventOut(
-                event_id=e.id,
-                type=e.event_type,
-                team=e.team,
-                timestamp_seconds=e.timestamp_seconds,
-                period=e.period,
-                confidence=e.confidence,
-                source=e.source,
-                clip_id=e.clip_id,
-            )
-            for e in events
-        ],
     )
 
 
