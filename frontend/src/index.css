@@ -135,10 +135,15 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; }
 @keyframes modal-in { from { opacity: 0; transform: translateY(18px) scale(0.96); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Export modal: clip preview + download / email actions */
-.export-modal { width: 880px; max-width: 92vw; }
+/* Export modal: clip preview + download / email actions.
+   The video yields height so Download/Send are always visible without scrolling. */
+.export-modal { width: 880px; max-width: 92vw; max-height: 88vh; }
 .clip-player { margin: 12px 0 18px; }
-.clip-player video { max-height: 62vh; }
+.clip-player video {
+  width: 100%; min-height: 180px;
+  max-height: calc(88vh - 280px); /* header + actions + padding reserve */
+  object-fit: contain;
+}
 .export-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .export-row > .btn { flex-shrink: 0; }
 .email-row { display: flex; gap: 8px; flex: 1; min-width: 280px; }
