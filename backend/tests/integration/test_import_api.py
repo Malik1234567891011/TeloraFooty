@@ -18,7 +18,7 @@ def _clean_store():
 
 @requires_ffmpeg
 def test_import_kicks_off_processing(client, sample_5s: Path, monkeypatch):
-    monkeypatch.setattr(match_processing_service, "_detect", lambda v: [])
+    monkeypatch.setattr(match_processing_service, "_detect", lambda v, on_progress=None: [])
 
     with sample_5s.open("rb") as f:
         resp = client.post("/api/games/import", files={"file": ("My Game.mp4", f, "video/mp4")})

@@ -458,13 +458,15 @@ class WholeClipDetector:
 
     # ---------- public API ----------
 
-    def analyze(self, video_path: str | Path) -> WholeClipResult:
+    def analyze(self, video_path: str | Path, on_progress=None) -> WholeClipResult:
         """Run the full two-stage detection on one short clip."""
         if not self.available:
             return WholeClipResult("none", None, 0.0, error="wholeclip_unavailable")
 
         path = Path(video_path)
         duration = self._duration(path)
+        if on_progress:
+            on_progress(20, "Localizing shots")
 
         # Stage 1 — K concurrent localization votes over the whole clip.
         uploaded = self._upload(path)
@@ -492,6 +494,9 @@ class WholeClipDetector:
             )
 
         # Stage 2 — zoom-verify candidate windows concurrently.
+        if on_progress:
+            on_progress(60, "Verifying candidates")
+
         def verify(cl: dict) -> list[dict]:
             ws = max(0.0, cl["timestamp"] - settings.wc_zoom_pre)
             we = min(duration, cl["timestamp"] + settings.wc_zoom_post)
@@ -531,6 +536,8 @@ class WholeClipDetector:
             attempts.extend(new)
             attempt_clusters = self._cluster_attempts(attempts)
 
+        if on_progress:
+            on_progress(90, "Selecting highlights")
         selected = self._select(attempt_clusters)
         if selected is None:
             # Candidates existed but none verified: fall back to the best

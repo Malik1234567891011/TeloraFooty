@@ -43,6 +43,7 @@ def analyze_demo_clip(
     *,
     team_name: str | None = None,
     attacking_direction: str = "unknown",
+    on_progress=None,
 ) -> DemoAnalysis:
     analysis_id = new_id("analysis")
     video_path = Path(video_path)
@@ -55,7 +56,7 @@ def analyze_demo_clip(
         detector = get_wholeclip_detector()
         if detector.available:
             try:
-                wc = detector.analyze(video_path)
+                wc = detector.analyze(video_path, on_progress=on_progress)
                 if wc.error is None:
                     return _demo_analysis_from_wholeclip(wc, analysis_id, video_path, team_name)
                 logger.warning("Whole-clip detector errored (%s); falling back.", wc.error)

@@ -43,20 +43,20 @@ def _detector_available() -> bool:
         return False
 
 
-def _detect(video: Video) -> list[DetectedEvent]:
+def _detect(video: Video, on_progress=None) -> list[DetectedEvent]:
     if not _detector_available():
         logger.warning("Detector unavailable (no GEMINI_API_KEY?) — completing with zero events.")
         return []
     if video.duration_seconds <= settings.short_clip_max_seconds:
         from app.services.detection_service import analyze_demo_clip
 
-        res = analyze_demo_clip(video.stored_path)
+        res = analyze_demo_clip(video.stored_path, on_progress=on_progress)
         if res.event_type in ("shot", "goal") and res.timestamp_seconds is not None:
             return [DetectedEvent(res.event_type, res.timestamp_seconds, res.confidence, res.explanation)]
         return []
     from app.services.full_match_service import analyze_full_match
 
-    result = analyze_full_match(video.stored_path)
+    result = analyze_full_match(video.stored_path, on_progress=on_progress)
     return [
         DetectedEvent(e.event_type, e.timestamp_seconds, e.confidence, e.explanation)
         for e in result.events
@@ -85,6 +85,15 @@ def process_game(game_id: str, job_id: str | None = None) -> None:
         if job_id:
             job_service.update_job(job_id, status="processing", progress=5, message="Preparing video.")
 
+        def on_progress(percent: int, message: str) -> None:
+            if job_id:
+                try:
+                    job_service.update_job(job_id, progress=percent, message=message)
+                except Exception:  # progress is best-effort, never fail a run
+                    logger.debug("progress update failed", exc_info=True)
+
+        on_progress(5, "Preparing video.")
+
         video = store.get_video(game.video_id) if game.video_id else None
         if video is None or not Path(video.stored_path).exists():
             raise FileNotFoundError("Source video is missing.")
@@ -93,9 +102,8 @@ def process_game(game_id: str, job_id: str | None = None) -> None:
             game.duration_seconds = video.duration_seconds
             store.save_game(game)
 
-        if job_id:
-            job_service.update_job(job_id, progress=15, message="Detecting shots and goals.")
-        detected = _detect(video)
+        on_progress(15, "Detecting shots and goals.")
+        detected = _detect(video, on_progress=on_progress)
 
         _clear_unverified_model_events(game_id)
         for d in detected:

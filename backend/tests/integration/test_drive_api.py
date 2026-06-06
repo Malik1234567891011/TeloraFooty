@@ -47,7 +47,7 @@ def test_import_drive_file_success(client, sample_5s: Path, monkeypatch):
 
     monkeypatch.setattr(drive_service.gdown, "download", fake_download)
     monkeypatch.setattr(drive_service.threading, "Thread", _InlineThread)
-    monkeypatch.setattr(match_processing_service, "_detect", lambda v: [])
+    monkeypatch.setattr(match_processing_service, "_detect", lambda v, on_progress=None: [])
 
     resp = client.post("/api/games/import-drive",
                        json={"url": "https://drive.google.com/file/d/abc123/view"})

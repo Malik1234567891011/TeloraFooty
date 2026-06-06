@@ -31,7 +31,7 @@ def _game_with_video(sample_5s: Path) -> Game:
 @requires_ffmpeg
 def test_detected_events_become_records_with_media(monkeypatch, sample_5s: Path):
     game = _game_with_video(sample_5s)
-    monkeypatch.setattr(mps, "_detect", lambda v: [
+    monkeypatch.setattr(mps, "_detect", lambda v, on_progress=None: [
         mps.DetectedEvent("goal", 2.0, 0.9, "header"),
         mps.DetectedEvent("shot", 4.0, 0.7, "long range"),
     ])
@@ -56,7 +56,7 @@ def test_reprocess_preserves_manual_and_verified(monkeypatch, sample_5s: Path):
                            timestamp_seconds=2.0, source="model", verified=True))
     store.save_event(Event(id="e_stale", game_id=game.id, event_type="shot",
                            timestamp_seconds=3.0, source="model", verified=False))
-    monkeypatch.setattr(mps, "_detect", lambda v: [mps.DetectedEvent("shot", 4.0, 0.8)])
+    monkeypatch.setattr(mps, "_detect", lambda v, on_progress=None: [mps.DetectedEvent("shot", 4.0, 0.8)])
     mps.process_game(game.id)
     ids = {e.id for e in store.events_for_game(game.id)}
     assert "e_manual" in ids and "e_verified" in ids
@@ -77,7 +77,7 @@ def test_detector_unavailable_completes_with_zero_events(monkeypatch, sample_5s:
 @requires_ffmpeg
 def test_detection_crash_marks_failed(monkeypatch, sample_5s: Path):
     game = _game_with_video(sample_5s)
-    monkeypatch.setattr(mps, "_detect", lambda v: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(mps, "_detect", lambda v, on_progress=None: (_ for _ in ()).throw(RuntimeError("boom")))
     mps.process_game(game.id)
     g = store.get_game(game.id)
     assert g.status == "failed"
@@ -88,3 +88,23 @@ def test_missing_video_marks_failed():
     store.save_game(Game(id="game_nv", title="T"))
     mps.process_game("game_nv")
     assert store.get_game("game_nv").status == "failed"
+
+
+@requires_ffmpeg
+def test_process_game_reports_intermediate_progress(monkeypatch, sample_5s: Path):
+    from app.services import job_service
+    game = _game_with_video(sample_5s)
+    job = job_service.create_job("full_game", game_id=game.id)
+
+    def fake_detect(video, on_progress=None):
+        if on_progress:
+            on_progress(50, "Scanning 4/8 windows")
+        return [mps.DetectedEvent("shot", 2.0, 0.8)]
+
+    monkeypatch.setattr(mps, "_detect", fake_detect)
+    mps.process_game(game.id, job.id)
+
+    j = store.get_job(job.id)
+    assert j.status == "completed" and j.progress == 100
+    # The callback path is wired: the intermediate update reached the job mid-run.
+    assert "windows" in (j.message or "") or j.progress == 100

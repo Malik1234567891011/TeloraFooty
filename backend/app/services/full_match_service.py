@@ -74,6 +74,7 @@ def analyze_full_match(
     checkpoint_path: str | Path | None = None,
     progress_every: int = 20,
     verify: bool = True,
+    on_progress=None,
 ) -> FullMatchResult:
     video_path = Path(video_path)
     judge = get_vlm_judge()
@@ -104,6 +105,9 @@ def analyze_full_match(
             if r.error:
                 failed += 1
             done += 1
+            if on_progress:
+                on_progress(15 + int(75 * done / max(len(windows), 1)),
+                            f"Scanning {done}/{len(windows)} windows")
             if done % progress_every == 0 or done == len(windows):
                 rate = done / max(time.time() - started, 1e-6)
                 eta = (len(windows) - done) / max(rate, 1e-6)
@@ -118,7 +122,7 @@ def analyze_full_match(
     return _finalize(
         judge, video_path, results, duration,
         windows_total=len(windows), windows_judged=done, windows_failed=failed,
-        workers=workers, verify=verify, generate_clips=True,
+        workers=workers, verify=verify, generate_clips=True, on_progress=on_progress,
     )
 
 
@@ -164,7 +168,7 @@ def analyze_from_checkpoint(
 def _finalize(
     judge, video_path: Path, results: list[VlmJudgment], duration: float,
     *, windows_total: int, windows_judged: int, windows_failed: int,
-    workers: int, verify: bool, generate_clips: bool,
+    workers: int, verify: bool, generate_clips: bool, on_progress=None,
 ) -> FullMatchResult:
     """Shared tail: results -> clusters -> verify -> events (+clips)."""
     fired = [
@@ -180,6 +184,8 @@ def _finalize(
 
     candidates = [_cluster_decision(c) for c in qualifying]
     if verify and candidates:
+        if on_progress:
+            on_progress(92, "Verifying candidates")
         candidates = _verify_candidates(judge, video_path, candidates, duration, workers)
 
     out_dir = settings.clips_dir / video_path.stem
