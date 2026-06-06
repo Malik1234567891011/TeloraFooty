@@ -25,24 +25,40 @@ export default function EventCard({
 
   return (
     <div className={`event-card${selected ? ' selected' : ''}`} onClick={onSelect}>
-      <span style={{ position: 'relative' }}>
-        <img className="ethumb" src={api.thumbUrl(gameId, event.id)} alt={title} />
-        <span className="tbadge">{fmtTime(event.timestamp)}</span>
-      </span>
-      <span>
-        <div className={`ttl ${event.type}`}>{title}</div>
-        <div className="src">{event.source}{event.verified ? ' · verified' : ''}</div>
-      </span>
-      <span className="actions" onClick={(e) => e.stopPropagation()}>
+      <div className="card-main">
+        <span className="thumb-wrap">
+          <img className="ethumb" src={api.thumbUrl(gameId, event.id)} alt={title} />
+          <span className="tbadge">{fmtTime(event.timestamp)}</span>
+        </span>
+        <div className="card-body">
+          <div className="card-top">
+            <div className={`ttl ${event.type}`}>{title}</div>
+            <button
+              className="kebab"
+              title="More"
+              onClick={(e) => {
+                e.stopPropagation()
+                setMenuOpen(!menuOpen)
+              }}
+            >⋮</button>
+          </div>
+          <div className="chips">
+            <span className={`chip${event.type === 'shot' ? ' chip-shot' : ''}`}>{event.source}</span>
+            {event.verified && <span className="chip chip-ok">verified</span>}
+          </div>
+        </div>
+      </div>
+
+      <div className="card-strip" onClick={(e) => e.stopPropagation()}>
         <button
           className={`rate${event.verified ? ' confirmed' : ''}`}
           title="Correct call"
           onClick={onConfirm}
-        >✓</button>
-        <button className="rate bad" title="Bad call — remove" onClick={onRemove}>✗</button>
-        <button title="Export clip" onClick={onExport}>⤓</button>
-        <button title="More" onClick={() => setMenuOpen(!menuOpen)}>⋮</button>
-      </span>
+        >✓ Correct</button>
+        <button className="rate bad" title="Bad call — remove" onClick={onRemove}>✗ Remove</button>
+        <button title="Export clip" onClick={onExport}>⤓ Export</button>
+      </div>
+
       {menuOpen && (
         <div className="menu" onClick={(e) => e.stopPropagation()}>
           <button onClick={() => { setMenuOpen(false); onSwitchType() }}>

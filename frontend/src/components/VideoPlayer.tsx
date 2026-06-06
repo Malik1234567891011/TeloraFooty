@@ -139,38 +139,42 @@ export default function VideoPlayer({
           }}
         />
         <div className="mode-badge">{badge}</div>
-      </div>
 
-      <div className="controls">
-        <button onClick={togglePlay} title="Play/pause (Space)">{playing ? '❚❚' : '▶'}</button>
-        <button onClick={() => jumpEvent(-1)} title="Previous event (P)">⇤</button>
-        <button onClick={() => jumpEvent(1)} title="Next event (N)">⇥</button>
-        <button onClick={() => skip(-5)} title="Back 5s (←)">↺5</button>
-        <button onClick={() => skip(5)} title="Forward 5s (→)">5↻</button>
+        {/* Veo-style: controls live on the video under a gradient scrim */}
+        <div className="video-overlay">
+          <div className="timeline" onClick={onScrub}>
+            <div className="track">
+              <div className="fill" style={{ width: winLen ? `${(relTime / winLen) * 100}%` : '0%' }} />
+              {(mode === 'clip' && selected ? [selected] : events).map((ev) => (
+                <span
+                  key={ev.id}
+                  className={`dot ${ev.type}${selected?.id === ev.id ? ' selected' : ''}`}
+                  style={{ left: winLen ? `${((ev.timestamp - win.start) / winLen) * 100}%` : '0%' }}
+                  title={`${ev.type} ${fmtTime(ev.timestamp)}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSelectEvent(ev)
+                  }}
+                />
+              ))}
+            </div>
+          </div>
 
-        <div className="timeline" onClick={onScrub}>
-          <div className="track">
-            <div className="fill" style={{ width: winLen ? `${(relTime / winLen) * 100}%` : '0%' }} />
-            {(mode === 'clip' && selected ? [selected] : events).map((ev) => (
-              <span
-                key={ev.id}
-                className={`dot ${ev.type}${selected?.id === ev.id ? ' selected' : ''}`}
-                style={{ left: winLen ? `${((ev.timestamp - win.start) / winLen) * 100}%` : '0%' }}
-                title={`${ev.type} ${fmtTime(ev.timestamp)}`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onSelectEvent(ev)
-                }}
-              />
-            ))}
+          <div className="controls-row">
+            <button onClick={togglePlay} title="Play/pause (Space)">{playing ? '❚❚' : '▶'}</button>
+            <button onClick={() => jumpEvent(-1)} title="Previous event (P)">⇤</button>
+            <button onClick={() => jumpEvent(1)} title="Next event (N)">⇥</button>
+            <button onClick={() => skip(-5)} title="Back 5s (←)">↺5</button>
+            <button onClick={() => skip(5)} title="Forward 5s (→)">5↻</button>
+            <span className="time">{fmtTime(relTime)} / {fmtTime(winLen)}</span>
+            <div className="right">
+              <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} title="Speed (+/-)">
+                {SPEEDS.map((s) => <option key={s} value={s}>{s}x</option>)}
+              </select>
+              <button onClick={() => wrapRef.current?.requestFullscreen()} title="Fullscreen (F)">⛶</button>
+            </div>
           </div>
         </div>
-
-        <span className="time">{fmtTime(relTime)} / {fmtTime(winLen)}</span>
-        <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} title="Speed (+/-)">
-          {SPEEDS.map((s) => <option key={s} value={s}>{s}x</option>)}
-        </select>
-        <button onClick={() => wrapRef.current?.requestFullscreen()} title="Fullscreen (F)">⛶</button>
       </div>
     </div>
   )

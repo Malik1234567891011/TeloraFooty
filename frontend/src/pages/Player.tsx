@@ -135,12 +135,12 @@ export default function Player() {
 
   return (
     <div className="page">
-      <div className="topbar">
-        <Link to="/">← Library</Link>
-        <span>
-          <span className="title">{game.title}</span> <span className="sub">· {game.date}</span>
-        </span>
-        <span className="sub">{events.length} events</span>
+      <div className="page-head">
+        <Link to="/" className="back-btn" title="Back to library">←</Link>
+        <div>
+          <h1>{game.title}</h1>
+          <div className="sub">{game.date} · {events.length} events</div>
+        </div>
       </div>
 
       {error && <div className="error-banner">{error}</div>}

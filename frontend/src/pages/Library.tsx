@@ -90,15 +90,17 @@ export default function Library() {
 
   return (
     <div className="page">
-      <div className="topbar">
-        <span className="title">TeloraFooty</span>
-        <span>
-          <button className="btn" onClick={() => fileInput.current?.click()} disabled={uploading}>
-            {uploading ? 'Uploading…' : 'Import video'}
-          </button>{' '}
-          <button className="btn btn-primary" onClick={onDrive}>Import from Drive</button>
-          <input ref={fileInput} type="file" accept=".mp4,.mov,.mkv" hidden onChange={onFile} />
-        </span>
+      <div className="page-head">
+        <div>
+          <h1>TeloraFooty</h1>
+          <div className="sub">Your match library</div>
+        </div>
+        <span className="spacer" />
+        <button className="btn" onClick={() => fileInput.current?.click()} disabled={uploading}>
+          {uploading ? 'Uploading…' : 'Import video'}
+        </button>
+        <button className="btn btn-primary" onClick={onDrive}>Import from Drive</button>
+        <input ref={fileInput} type="file" accept=".mp4,.mov,.mkv" hidden onChange={onFile} />
       </div>
 
       {error && <div className="error-banner">{error}</div>}

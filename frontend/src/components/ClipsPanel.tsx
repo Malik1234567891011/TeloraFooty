@@ -86,9 +86,7 @@ export default function ClipsPanel({
         />
       ))}
       {visible.length === 0 && (
-        <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-          No events — use + Tag while watching to add one.
-        </p>
+        <p className="empty-note">No events — use + Tag while watching to add one.</p>
       )}
     </div>
   )
