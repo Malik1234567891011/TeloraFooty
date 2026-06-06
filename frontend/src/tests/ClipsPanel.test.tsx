@@ -93,10 +93,16 @@ test('confirm button calls onConfirm with the event', () => {
   expect(props.onConfirm).toHaveBeenCalledWith(events[0])
 })
 
-test('remove button calls onRemove with the event', () => {
+test('remove button plays the leave animation, then calls onRemove', () => {
+  vi.useFakeTimers()
   const props = setup()
   fireEvent.click(screen.getAllByTitle('Bad call — remove')[0])
+  const card = document.querySelectorAll('.event-card')[0]
+  expect(card.className).toContain('leaving')
+  expect(props.onRemove).not.toHaveBeenCalled() // waits for the animation
+  vi.advanceTimersByTime(600)
   expect(props.onRemove).toHaveBeenCalledWith(events[0])
+  vi.useRealTimers()
 })
 
 test('verified event shows the verified state', () => {

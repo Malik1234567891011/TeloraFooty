@@ -70,9 +70,10 @@ export default function ClipsPanel({
         </span>
       </div>
 
-      {visible.map((ev) => (
+      {visible.map((ev, i) => (
         <EventCard
           key={ev.id}
+          index={i}
           gameId={gameId}
           event={ev}
           selected={selected?.id === ev.id}

@@ -106,8 +106,8 @@ export default function Library() {
       {error && <div className="error-banner">{error}</div>}
 
       <div className="library-grid">
-        {games.map((g) => (
-          <div key={g.id} className="game-card">
+        {games.map((g, i) => (
+          <div key={g.id} className="game-card" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
             {g.status === 'ready' ? (
               <Link to={`/games/${g.id}`}>
                 <div className="thumb">

@@ -21,11 +21,26 @@ export default function VideoPlayer({
   gameId, duration, events, mode, selected, videoRef, onTimeUpdate, onSelectEvent, onTag,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
+  const hideTimer = useRef<number | null>(null)
   const [time, setTime] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
+  const [controlsVisible, setControlsVisible] = useState(true)
 
   const video = () => videoRef.current
+
+  // Netflix-style: controls fade away while playing, reappear on mouse activity.
+  function pokeControls() {
+    setControlsVisible(true)
+    if (hideTimer.current) window.clearTimeout(hideTimer.current)
+    hideTimer.current = window.setTimeout(() => {
+      if (videoRef.current && !videoRef.current.paused) setControlsVisible(false)
+    }, 2600)
+  }
+
+  useEffect(() => () => {
+    if (hideTimer.current) window.clearTimeout(hideTimer.current)
+  }, [])
 
   function togglePlay() {
     const v = video()
@@ -125,13 +140,26 @@ export default function VideoPlayer({
 
   return (
     <div className="video-col">
-      <div className="video-wrap" ref={wrapRef}>
+      <div
+        className="video-wrap"
+        ref={wrapRef}
+        onMouseMove={pokeControls}
+        onMouseLeave={() => {
+          if (videoRef.current && !videoRef.current.paused) setControlsVisible(false)
+        }}
+      >
         <video
           ref={videoRef}
           src={api.videoUrl(gameId)}
           onClick={togglePlay}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
+          onPlay={() => {
+            setPlaying(true)
+            pokeControls()
+          }}
+          onPause={() => {
+            setPlaying(false)
+            setControlsVisible(true)
+          }}
           onTimeUpdate={(e) => {
             const t = e.currentTarget.currentTime
             setTime(t)
@@ -141,10 +169,11 @@ export default function VideoPlayer({
         <div className="mode-badge">{badge}</div>
 
         {/* Veo-style: controls live on the video under a gradient scrim */}
-        <div className="video-overlay">
+        <div className={`video-overlay${controlsVisible ? '' : ' hidden'}`}>
           <div className="timeline" onClick={onScrub}>
             <div className="track">
               <div className="fill" style={{ width: winLen ? `${(relTime / winLen) * 100}%` : '0%' }} />
+              <span className="knob" style={{ left: winLen ? `${(relTime / winLen) * 100}%` : '0%' }} />
               {(mode === 'clip' && selected ? [selected] : events).map((ev) => (
                 <span
                   key={ev.id}
